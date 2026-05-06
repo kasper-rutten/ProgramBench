@@ -9,7 +9,7 @@ Given only a compiled binary and its documentation, AI agents must architect and
 ## Links
 
 - [Website](https://programbench.com)
-- [Paper](https://programbench.com/static/paper.pdf)
+- [Paper](https://arxiv.org/abs/2605.03546)
 - [HuggingFace](https://huggingface.co/datasets/programbench/ProgramBench-Tests)
 - [Leaderboard](https://programbench.com)
 - [Usage Guide](docs/README.md)
@@ -45,10 +45,14 @@ uv sync  # installs editable + dev dependencies
 If our work was useful for you, please cite it:
 
 ```bibtex
-@preprint{yang2026programbench,
-  title={ProgramBench: Can Language Models Rebuild Programs From Scratch?},
-  author={John Yang and Kilian Lieret and Jeffrey Ma and Parth Thakkar and Dmitrii Pedchenko and Sten Sootla and Emily McMilin and Pengcheng Yin and Rui Hou and Gabriel Synnaeve and Diyi Yang and Ofir Press},
-  year={2026},
+@misc{yang2026programbenchlanguagemodelsrebuild,
+    title={ProgramBench: Can Language Models Rebuild Programs From Scratch?},
+    author={John Yang and Kilian Lieret and Jeffrey Ma and Parth Thakkar and Dmitrii Pedchenko and Sten Sootla and Emily McMilin and Pengcheng Yin and Rui Hou and Gabriel Synnaeve and Diyi Yang and Ofir Press},
+    year={2026},
+    eprint={2605.03546},
+    archivePrefix={arXiv},
+    primaryClass={cs.SE},
+    url={https://arxiv.org/abs/2605.03546},
 }
 ```
 

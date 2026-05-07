@@ -20,6 +20,8 @@ Do not remove this notice.
 """
 
 import logging
+import subprocess
+import tempfile
 import threading
 import time
 import uuid
@@ -383,6 +385,62 @@ class Evaluator:
             log.debug("Output: %s", r["output"])
         return r
 
+    def _copy_file_from_container(
+        self,
+        *,
+        env: ContainerEnvironment,
+        log_buf: list[dict],
+        container_path: str,
+        step_name: str,
+        timeout: int = 60,
+    ) -> str:
+        """Copy a file out of the container via ``docker cp`` and return its contents.
+
+        Bypasses bash so login-shell stderr (``mesg: ttyname failed`` etc.) can't
+        pollute the bytes the way ``cat <file>`` would. Logs to ``log_buf`` with
+        the same shape as ``_run_step``; on success the entry's ``output`` holds
+        the file contents so ``from_existing`` replay keeps working.
+        """
+        host_tmp = Path(tempfile.mkstemp(suffix=Path(container_path).suffix or ".out")[1])
+        cmd_list = [env.executable, "cp", f"{env.container_id}:{container_path}", str(host_tmp)]
+        cmd_str = " ".join(cmd_list)
+        log.debug("Running step: %s", cmd_str)
+        t0 = time.monotonic()
+        try:
+            try:
+                cp = subprocess.run(cmd_list, capture_output=True, text=True, timeout=timeout)
+                rc = cp.returncode
+                err = (cp.stdout + cp.stderr).strip()
+            except subprocess.TimeoutExpired:
+                rc, err = -1, f"docker cp timed out after {timeout}s"
+            wall_time = time.monotonic() - t0
+            if rc != 0:
+                log_buf.append(
+                    {
+                        "step": step_name,
+                        "command": cmd_str,
+                        "wall_time": wall_time,
+                        "output": err,
+                        "returncode": rc,
+                        "exception_info": "",
+                    }
+                )
+                raise EvalStepError(f"{step_name}_failed", err)
+            contents = host_tmp.read_text()
+            log_buf.append(
+                {
+                    "step": step_name,
+                    "command": cmd_str,
+                    "wall_time": wall_time,
+                    "output": contents,
+                    "returncode": 0,
+                    "exception_info": "",
+                }
+            )
+            return contents
+        finally:
+            host_tmp.unlink(missing_ok=True)
+
     def _new_env(self, image: str, *, serial_pytest: bool = False) -> ContainerEnvironment:
         # Baseline xdist hardening that always works (xdist ships with
         # every test image): replace up to N crashed workers per branch so
@@ -593,15 +651,15 @@ class Evaluator:
                 accept_failure=True,
                 timeout=3600,
             )
-            r = self._run_step(
-                "cat eval/results.xml",
+            xml = self._copy_file_from_container(
                 env=env,
                 log_buf=log_buf,
+                container_path=f"{WORKSPACE_DIR}/eval/results.xml",
                 step_name="results_read",
-                timeout=300,
+                timeout=60,
             )
             log_buf[-1]["branch"] = branch
-            return r["output"]
+            return xml
         finally:
             env.cleanup()
 

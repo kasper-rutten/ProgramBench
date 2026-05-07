@@ -29,14 +29,16 @@ def main() -> None:
     PYPROJECT.write_text(updated)
     print(f"Updated {PYPROJECT.relative_to(Path.cwd())}: {current} -> {new}")
 
-    # Commit the changes
-    try:
-        subprocess.run(["git", "add", str(PYPROJECT)], check=True)
-        subprocess.run(["git", "commit", "-m", "Bump version"], check=True)
-        print("Changes committed with message 'Bump version'")
-    except subprocess.CalledProcessError as e:
-        print(f"Error committing changes: {e}", file=sys.stderr)
-        sys.exit(1)
+    tag = f"v{new}"
+
+    subprocess.run(["git", "add", str(PYPROJECT)], check=True)
+    subprocess.run(["git", "commit", "-m", "Bump version"], check=True)
+    print("Added version bump as commit")
+
+    subprocess.run(["git", "tag", tag], check=True)
+    print(f"Created tag {tag}")
+
+    print(f"\nTo push:\n  git push && git push origin {tag}")
 
 
 if __name__ == "__main__":

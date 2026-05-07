@@ -80,7 +80,7 @@ class BatchEvalSummary(BaseModel):
 
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def resolve_ratio(self) -> float:
+    def average_pass_rate(self) -> float:
         if not self.summaries:
             return 0.0
         return sum(s.score for s in self.summaries) / len(self.summaries)
@@ -114,7 +114,7 @@ class BatchEvalSummary(BaseModel):
         table.add_section()
         table.add_row(
             "Average",
-            Text(f"{self.resolve_ratio * 100:.0f}", style="bold"),
+            Text(f"{self.average_pass_rate * 100:.0f}", style="bold"),
             f"{self.total_instances} instances",
         )
         note = Text(

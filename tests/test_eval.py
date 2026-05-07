@@ -286,14 +286,14 @@ class TestInstanceEvalSummary:
 
 
 class TestBatchEvalSummary:
-    def test_resolve_ratio(self):
+    def test_average_pass_rate(self):
         batch = BatchEvalSummary(
             summaries=[
                 InstanceEvalSummary(instance_id="a", score=1.0, n_resolved=2, n_tests=2),
                 InstanceEvalSummary(instance_id="b", score=0.0, n_resolved=0, n_tests=2),
             ]
         )
-        assert batch.resolve_ratio == 0.5
+        assert batch.average_pass_rate == 0.5
         assert batch.total_instances == 2
 
 

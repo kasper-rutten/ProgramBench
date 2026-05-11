@@ -1379,6 +1379,32 @@
           ]
         },
         {
+          "name": "tests.test_file_utils.test_is_named_pipe_function",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778343057,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_file_utils.test_named_pipe_stream_search",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778343057,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
           "name": "tests.test_harvest.test_big_file_handling",
           "reasons": [
             {

@@ -1848,6 +1848,721 @@
       ],
       "ignored_tests": [
         {
+          "name": "tests.test_card_rendering.test_basic_card_answer_with_code_markdown",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778451105,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_card_rendering.test_basic_card_question_with_bold_markdown",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_card_rendering.test_basic_card_with_code_block",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_card_rendering.test_basic_card_with_inline_markdown_mix",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_card_rendering.test_basic_card_with_multiline_answer",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_card_rendering.test_cloze_card_back_reveals_deletion",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778456376,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_card_rendering.test_cloze_card_front_shows_dots",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_card_rendering.test_cloze_card_with_empty_surrounding_text",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778451105,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_card_rendering.test_cloze_card_with_punctuation_in_deletion",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778464730,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_card_rendering.test_cloze_with_markdown_in_deletion",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_card_rendering.test_html_entities_in_basic_card",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778451105,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_check.test_check_answer_in_cloze",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_check.test_check_cloze_after_question",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_check.test_check_cloze_without_brackets",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_check.test_check_mixed_basic_and_cloze_cards",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_check.test_check_multi_deck",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_check.test_check_multiple_cloze_deletions",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_check.test_check_only_cloze_cards",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_check.test_check_unicode_content",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_db_gaps.test_cloze_card_format",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_db_gaps.test_mixed_card_formats",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_drill_http.test_404_for_nonexistent_paths",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778451105,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_drill_http.test_answer_controls_binary_mode",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778464730,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_drill_http.test_answer_controls_full_mode",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778451105,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_drill_http.test_card_limit_restricts_session",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_drill_http.test_different_grade_actions",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778451105,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_drill_http.test_end_session_button",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778451105,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_drill_http.test_from_deck_filter",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778456376,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_drill_http.test_grading_advances_to_next_card",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778451105,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_drill_http.test_progress_bar_updates",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_drill_http.test_reveal_action_shows_answer",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_drill_http.test_server_starts_and_serves_main_page",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_drill_http.test_session_completion",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_drill_http.test_static_resources_served",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778456376,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_drill_http.test_undo_functionality",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_export.test_export_cloze_deletion_boundaries",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_export.test_export_edge_cases",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_export.test_export_family_hash_cloze_cards",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_export.test_export_json_structure",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_export.test_export_line_numbers_accuracy",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_export.test_export_mixed_card_types",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_export.test_export_output_file_overwrite",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_export.test_export_output_is_pretty_printed",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_export.test_export_performance_field_always_present",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_export.test_export_stdout_vs_file_identical",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_export.test_export_test_collection",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_export.test_export_to_file",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_export.test_export_unicode_collection",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_card_cloze_card_hash",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_card_family_hash",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_check_directory",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_db_due_today_new_cards",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778456376,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_db_get_card_by_hash",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778451105,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_db_insert_card_via_drill",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778451105,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_db_insert_twice_fails",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778456376,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
           "name": "tests.test_harvest.test_drill_action_grade",
           "reasons": [
             {
@@ -1864,11 +2579,245 @@
           ]
         },
         {
+          "name": "tests.test_harvest.test_drill_cache_insert_new_card",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_drill_cache_persists_to_database",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778451105,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_drill_cache_prevents_duplicate_insert",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778451105,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_drill_undo_functionality",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_export_full_export",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_fsrs_grade_serialization",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_fsrs_initial_difficulty_of_forgetting",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778451105,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_fsrs_initial_stability_calculation",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_fsrs_initial_stability_easy",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_fsrs_initial_stability_forgot",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778451105,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_fsrs_initial_stability_good",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_fsrs_initial_stability_hard",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_fsrs_interval_equals_stability",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_fsrs_via_export",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
           "name": "tests.test_harvest.test_helper_create_tmp_copy",
           "reasons": [
             {
               "id": "dummy_pass",
               "timestamp": 1777387539,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_markdown_bold_rendering_via_drill",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_markdown_code_rendering_via_drill",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778451105,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_markdown_image_links_via_drill",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_media_404_for_nonexistent_file",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
               "user": "kilian"
             }
           ]
@@ -1884,10 +2833,374 @@
           ]
         },
         {
+          "name": "tests.test_harvest.test_media_ogg_audio_serving",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_media_path_traversal_blocked",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_media_serve_audio_via_drill",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_media_serve_image_via_drill",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_media_serve_png_via_drill",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778451105,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_media_subdirectory_serving",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778456376,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_media_svg_serving",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_parser_cloze_deletion_with_exclamation_sign",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_parser_cloze_deletion_with_math",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_parser_cloze_followed_by_answer",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778464738,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_parser_cloze_followed_by_question",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_parser_cloze_multiple",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_parser_cloze_single",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_parser_cloze_with_escaped_square_bracket",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_parser_cloze_with_image",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_parser_cloze_with_initial_blank_line",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_parser_cloze_with_multiple_escaped_square_brackets",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_parser_cloze_without_deletions",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_parser_identical_cloze_cards",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778464738,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_parser_multi_line_cloze",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_parser_parse_deck",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_parser_question_followed_by_cloze",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_parser_separator_after_cloze_card",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_parser_separator_between_cloze_cards",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_parser_two_clozes",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_performance_serialization",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
           "name": "tests.test_harvest.test_performance_update",
           "reasons": [
             {
               "id": "gold_fail"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_timestamp_serialize",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_timestamp_try_from_string",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
             }
           ]
         },
@@ -1897,6 +3210,214 @@
             {
               "id": "dummy_pass",
               "timestamp": 1777387539,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_parser.test_adjacent_cloze_deletions",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_parser.test_basic_cloze_card",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_parser.test_cloze_escaped_brackets_vs_real_cloze",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_parser.test_cloze_exclamation_and_backslash_edge_cases",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_parser.test_cloze_multiple_consecutive_escapes",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_parser.test_cloze_no_trailing_newline",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_parser.test_cloze_with_backslash_not_before_brackets",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_parser.test_cloze_with_image_markdown_syntax",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778464738,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_parser.test_empty_cloze_deletion",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_parser.test_markdown_formatting_preserved",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_parser.test_multiline_cloze_deletion",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_parser.test_multiple_cards_in_file",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_parser.test_multiple_cloze_deletions",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_parser.test_nested_brackets_in_cloze",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_parser.test_special_characters_preserved",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_parser.test_unicode_emoji_in_cloze",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
               "user": "kilian"
             }
           ]
@@ -1917,6 +3438,188 @@
             {
               "id": "dummy_pass",
               "timestamp": 1777387539,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_types.test_card_type_basic_vs_cloze",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_types.test_cloze_at_end_of_text",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_types.test_cloze_at_start_of_text",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778464738,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_types.test_cloze_card_family_hash_consistency",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_types.test_cloze_card_hash_includes_deletion_positions",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778451198,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_types.test_cloze_deletion_byte_positions",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_types.test_cloze_deletion_positions_zero_indexed",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_types.test_cloze_entire_text",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_types.test_cloze_escaped_brackets",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_types.test_cloze_image_markdown_not_deletion",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778464738,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_types.test_cloze_text_without_brackets",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_types.test_cloze_with_emoji",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_types.test_cloze_with_nested_markdown",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778469436,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_types.test_multiple_cloze_same_line_ordered",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_mini_responses__gpt-5-4-mini-genai-responses",
+              "timestamp": 1778456383,
               "user": "kilian"
             }
           ]
@@ -1943,7 +3646,21 @@
         "eval.tests.test_argparse_validation.test_unknown_or_missing_value_errors[args2-substrings2]",
         "eval.tests.test_argparse_validation.test_unknown_or_missing_value_errors[args3-substrings3]"
       ],
-      "ignored_tests": []
+      "ignored_tests": [
+        {
+          "name": "eval.tests.test_argparse_validation.test_bool_choice_validation[args0]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gemini_3_flash__gemini-3-flash-preview-genai",
+              "timestamp": 1778451163,
+              "user": "kilian"
+            }
+          ]
+        }
+      ]
     },
     "823caab36985": {
       "ignored": false,

@@ -588,6 +588,32 @@
           ]
         },
         {
+          "name": "tests.test_gap_filling.test_large_stdin_with_fail_flag",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gemini_3_1_pro__gemini-3-1-pro-preview-genai",
+              "timestamp": 1778451059,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_gap_filling.test_large_stdin_without_fail_flag",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gemini_3_flash__gemini-3-flash-preview-genai",
+              "timestamp": 1778451067,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
           "name": "tests.test_harvest.test_lexer_analysis[bash]",
           "reasons": [
             {
@@ -644,6 +670,123 @@
           ]
         },
         {
+          "name": "tests.test_harvest.test_lexer_fixture[fsharp/fsharp.actual]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "total=569.1s phases=['call', 'setup', 'teardown']",
+              "kind": "slow",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4__gpt-5-4-fair",
+              "timestamp": 1778451185,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_lexer_fixture[objectpascal.actual]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "total=445.1s phases=['call', 'setup', 'teardown']",
+              "kind": "slow",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_responses__gpt-5-4-genai-responses",
+              "timestamp": 1778451205,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_lexer_fixture[openedgeabl.actual]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "total=1007.3s phases=['call', 'setup', 'teardown']",
+              "kind": "slow",
+              "run": "infer_no_int_no_dep_diff_lang__muse_spark_direct__muse_spark_direct_5_10",
+              "timestamp": 1778451233,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_lexer_fixture[python/test_fstring_35b.actual]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__opus_4_7_max__claude-4-7-opus-genai",
+              "timestamp": 1778451144,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_lexer_fixture[raku/raku.actual]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "total=1056.3s phases=['call', 'setup', 'teardown']",
+              "kind": "slow",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_responses__gpt-5-4-genai-responses",
+              "timestamp": 1778451205,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_lexer_fixture[tal.actual]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4_responses__gpt-5-4-genai-responses",
+              "timestamp": 1778451205,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_lexer_fixture[v/v.actual]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "total=1385.0s phases=['call', 'setup', 'teardown']",
+              "kind": "slow",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4__gpt-5-4-fair",
+              "timestamp": 1778451185,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_lexer_fixture[wat.actual]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "total=463.8s phases=['call', 'setup', 'teardown']",
+              "kind": "slow",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4__gpt-5-4-fair",
+              "timestamp": 1778451185,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_harvest.test_lexer_fixture[zig.actual]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gpt_5_4__gpt-5-4-fair",
+              "timestamp": 1778451185,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
           "name": "tests.test_integration.test_html_prevent_surrounding_pre",
           "reasons": [
             {
@@ -659,6 +802,19 @@
             {
               "id": "dummy_pass",
               "timestamp": 1777387537,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_special_modes.test_large_input_processed_correctly",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778343057,
               "user": "kilian"
             }
           ]

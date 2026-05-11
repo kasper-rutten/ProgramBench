@@ -570,7 +570,151 @@
         "eval.tests.test_args_parsing.test_unexpected_args[args1-needles1]",
         "eval.tests.test_args_parsing.test_unexpected_args[args2-needles2]"
       ],
-      "ignored_tests": []
+      "ignored_tests": [
+        {
+          "name": "eval.tests.test_args_parsing.test_duplicate_options_disallowed[args1-needles1]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778343057,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "eval.tests.test_args_parsing.test_server_missing_option_values[args0-needles0]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_internet__gpt-5-2-genai",
+              "timestamp": 1778451267,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "eval.tests.test_args_parsing.test_server_missing_option_values[args1-needles1]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_internet__gpt-5-2-genai",
+              "timestamp": 1778451267,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "eval.tests.test_args_parsing.test_server_missing_option_values[args2-needles2]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_internet__gpt-5-2-genai",
+              "timestamp": 1778451267,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "eval.tests.test_args_parsing.test_server_missing_option_values[args3-needles3]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses__gpt-5-5-genai-responses",
+              "timestamp": 1778451093,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "eval.tests.test_args_parsing.test_server_missing_option_values[args4-needles4]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_internet__gpt-5-2-genai",
+              "timestamp": 1778451267,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "eval.tests.test_args_parsing.test_server_type_and_range_validation[args0-needles0]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__gemini_3_flash__gemini-3-flash-preview-genai",
+              "timestamp": 1778451163,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "eval.tests.test_args_parsing.test_server_type_and_range_validation[args1-needles1]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_4_responses__gpt-5-4-genai-responses",
+              "timestamp": 1778451086,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "eval.tests.test_args_parsing.test_server_type_and_range_validation[args2-needles2]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_internet__gpt-5-2-genai",
+              "timestamp": 1778451267,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "eval.tests.test_args_parsing.test_server_type_and_range_validation[args3-needles3]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer__gemini-3-1-pro-preview-genai",
+              "timestamp": 1778451035,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "eval.tests.test_args_parsing.test_unexpected_args[args2-needles2]",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gemini_3_1_pro__gemini-3-1-pro-preview-genai",
+              "timestamp": 1778451060,
+              "user": "kilian"
+            }
+          ]
+        }
+      ]
     },
     "f1e76ae50499": {
       "ignored": false,
@@ -740,6 +884,19 @@
           "reasons": [
             {
               "id": "dummy_pass"
+            }
+          ]
+        },
+        {
+          "name": "eval.tests.test_all.test_proxy_and_auth_and_range",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep_diff_lang__haiku_4_5__claude-4-5-haiku-genai",
+              "timestamp": 1778464746,
+              "user": "kilian"
             }
           ]
         }

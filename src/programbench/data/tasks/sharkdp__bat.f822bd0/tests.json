@@ -1861,6 +1861,19 @@
           ]
         },
         {
+          "name": "tests.test_decorations_gaps.test_line_numbers_high_line_count_wrap",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778363217,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
           "name": "tests.test_diff.test_diff_submodule_graceful",
           "reasons": [
             {
@@ -2750,6 +2763,19 @@
             {
               "id": "gold_fail",
               "timestamp": 1777386530,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_output.test_large_binary_file_handling",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses__gpt-5-5-genai-responses",
+              "timestamp": 1778451096,
               "user": "kilian"
             }
           ]

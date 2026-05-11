@@ -724,7 +724,17 @@
         "eval.tests.test_args_parsing.test_version_flag_short_circuits_other_validation[args2]",
         "eval.tests.test_args_parsing.test_version_flag_short_circuits_other_validation[args3]"
       ],
-      "ignored_tests": []
+      "ignored_tests": [
+        {
+          "name": "eval.tests.test_args_parsing.test_u_out_of_range_or_overflow_values_still_enter_render_loop[args2]",
+          "reasons": [
+            {
+              "id": "ignored_manual",
+              "description": "This test passes -u 999999999999999999999999, which overflows C's 32-bit int via atoi(), wrapping to a small/negative value so the original binary enters the render loop. This is undefined behavior in C, not intentional design. A correct reimplementation in a language without integer overflow (e.g. Python) would reasonably reject or hang on this value. The test enshrines accidental C overflow semantics rather than meaningful program behavior."
+            }
+          ]
+        }
+      ]
     },
     "1d30a9bd67f8": {
       "ignored": false,

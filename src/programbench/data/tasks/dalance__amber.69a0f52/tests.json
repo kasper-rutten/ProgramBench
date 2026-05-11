@@ -599,11 +599,37 @@
       ],
       "ignored_tests": [
         {
+          "name": "tests.test_ambr_edge.test_large_file_triggers_mmap_path",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778343057,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
           "name": "tests.test_ambr_edge.test_statistics_output_structure_complete",
           "reasons": [
             {
               "id": "gold_fail",
               "timestamp": 1777386409,
+              "user": "kilian"
+            }
+          ]
+        },
+        {
+          "name": "tests.test_cli_config.test_size_per_thread_flag",
+          "reasons": [
+            {
+              "id": "slow_or_hang",
+              "info": "phases=['call', 'setup'] run_tests rc=-1",
+              "kind": "hung",
+              "run": "infer_no_int_no_dep__gpt_5_5_responses_high__gpt-5-5-genai-responses",
+              "timestamp": 1778343057,
               "user": "kilian"
             }
           ]

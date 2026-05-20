@@ -147,7 +147,9 @@ def test_build_index_and_render_report(tmp_path):
     assert index["total_experiments"] == 1
     assert index["runs"][0]["run_id"] == "demo"
     assert index["experiments"][0]["name"] == "demo"
-    assert "ProgramBench Lab Report" in html
+    assert "ProgramBench Lab" in html
+    assert 'id="pb-data"' in html
+    assert 'id="experiment-list"' in html
     assert "Experiments" in html
     assert "fake__task.abc1234" in html
 

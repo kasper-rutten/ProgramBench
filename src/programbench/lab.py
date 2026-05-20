@@ -15,12 +15,10 @@ capturing run metadata, and producing lightweight reports.
 from __future__ import annotations
 
 import json
-import math
 import statistics
 from collections import Counter
 from collections.abc import Iterable
 from datetime import datetime, timezone
-from html import escape
 from pathlib import Path
 from typing import Any
 
@@ -696,201 +694,467 @@ def write_index(runs_root: Path, output: Path, *, repo_root: Path | None = None)
     return index
 
 
-def _fmt_score(score: float) -> str:
-    if math.isclose(score, 1.0):
-        return "solved"
-    return f"{score * 100:.0f}"
-
-
-def _fmt_duration(seconds: Any) -> str:
-    if not isinstance(seconds, (int, float)):
-        return ""
-    seconds = max(0, int(round(seconds)))
-    hours, remainder = divmod(seconds, 3600)
-    minutes, secs = divmod(remainder, 60)
-    if hours:
-        return f"{hours}h {minutes:02d}m"
-    if minutes:
-        return f"{minutes}m {secs:02d}s"
-    return f"{secs}s"
-
-
-def _fmt_tokens(value: Any) -> str:
-    if not isinstance(value, int):
-        return ""
-    if value >= 1_000_000:
-        return f"{value / 1_000_000:.2f}M"
-    if value >= 1_000:
-        return f"{value / 1_000:.1f}K"
-    return str(value)
-
-
 def render_html_report(index: dict[str, Any]) -> str:
-    experiment_rows = []
-    for experiment in index.get("experiments", []):
-        accounting = experiment.get("accounting") or {}
-        tags = ", ".join(experiment.get("tags") or [])
-        factor_text = ", ".join(
-            f"{key}: {value}" for key, value in (experiment.get("factors") or {}).items()
-        )
-        experiment_rows.append(
-            "<tr>"
-            f"<td>{escape(str(experiment.get('name') or ''))}"
-            f"<br><span class='muted'>{escape(str(experiment.get('description') or ''))}</span></td>"
-            f"<td class='num'>{experiment.get('evaluated_runs', 0)}/{experiment.get('run_count', 0)}</td>"
-            f"<td class='num'>{_fmt_score(float(experiment.get('average_score') or 0))}</td>"
-            f"<td class='num'>{experiment.get('total_resolved', 0)}/{experiment.get('total_tests', 0)}</td>"
-            f"<td>{escape(tags)}"
-            f"<br><span class='muted'>{escape(factor_text)}</span></td>"
-            f"<td>{escape(_fmt_duration(accounting.get('wall_time_seconds')))}"
-            f"<br><span class='muted'>{accounting.get('turns', 0)} turns, "
-            f"{accounting.get('tool_calls', 0)} tools, "
-            f"{escape(_fmt_tokens(accounting.get('total_tokens')))}</span></td>"
-            "</tr>"
-        )
-    rows = []
-    details = []
-    for run in index.get("runs", []):
-        accounting = run.get("accounting") or {}
-        experiment = run.get("experiment") or {}
-        rows.append(
-            "<tr>"
-            f"<td>{escape(str(experiment.get('name') or run.get('label') or run['run_id']))}</td>"
-            f"<td><a href='#{escape(run['run_id'])}'>{escape(run['run_id'])}</a></td>"
-            f"<td>{escape(str(run.get('model') or ''))}</td>"
-            f"<td>{escape(str(run.get('reasoning_effort') or ''))}</td>"
-            f"<td>{run.get('evaluated_instances', 0)}/{run.get('submitted_instances', 0)}</td>"
-            f"<td class='num'>{_fmt_score(float(run.get('average_score') or 0))}</td>"
-            f"<td class='num'>{run.get('total_resolved', 0)}/{run.get('total_tests', 0)}</td>"
-            f"<td>{escape(_fmt_duration(accounting.get('wall_time_seconds')))}"
-            f"<br><span class='muted'>{accounting.get('turns', 0)} turns, "
-            f"{accounting.get('tool_calls', 0)} tools, "
-            f"{escape(_fmt_tokens(accounting.get('total_tokens')))}</span></td>"
-            f"<td>{escape(str(run.get('created_at') or ''))}</td>"
-            "</tr>"
-        )
-        inst_rows = []
-        failure_blocks = []
-        for inst in run.get("instances", []):
-            inst_accounting = inst.get("accounting") or {}
-            inst_rows.append(
-                "<tr>"
-                f"<td>{escape(inst['instance_id'])}</td>"
-                f"<td class='num'>{_fmt_score(float(inst.get('score') or 0))}</td>"
-                f"<td class='num'>{inst.get('n_resolved', 0)}/{inst.get('n_tests', 0)}</td>"
-                f"<td class='num'>{escape(_fmt_duration(inst_accounting.get('wall_time_seconds')))}</td>"
-                f"<td class='num'>{inst_accounting.get('turns', 0)}</td>"
-                f"<td class='num'>{inst_accounting.get('tool_calls', 0)}</td>"
-                f"<td class='num'>{escape(_fmt_tokens(inst_accounting.get('total_tokens')))}</td>"
-                f"<td>{escape(', '.join(f'{k}:{v}' for k, v in inst.get('status_counts', {}).items()))}</td>"
-                f"<td>{escape(str(inst.get('error_code') or ''))}</td>"
-                "</tr>"
-            )
-            failures = inst.get("top_failures") or []
-            if failures:
-                items = "".join(
-                    f"<li><code>{escape(f['name'])}</code> "
-                    f"<span class='muted'>{escape(f.get('status', ''))}</span>"
-                    f"<br><span>{escape(f.get('message', ''))}</span></li>"
-                    for f in failures
-                )
-                failure_blocks.append(f"<h4>{escape(inst['instance_id'])}</h4><ol>{items}</ol>")
-        links = []
-        for label, key in [
-            ("manifest", "manifest_path"),
-            ("prompt", "prompt_path"),
-            ("final", "final_path"),
-            ("events", "events_path"),
-        ]:
-            if run.get(key):
-                links.append(f"<a href='../{escape(run[key])}'>{label}</a>")
-        tokens = accounting.get("tokens") or {}
-        token_text = ", ".join(f"{k}: {v:,}" for k, v in tokens.items()) or "none"
-        cost_text = ""
-        if accounting.get("same_cost_mode"):
-            selected_cost = accounting.get("simulated_cost_selected")
-            total_cost = accounting.get("simulated_cost")
-            limit_cost = accounting.get("simulated_cost_limit")
-            unit = str(accounting.get("simulated_cost_unit") or "cost units")
-            if unit == "api_usd":
-                fmt_cost = lambda value: f"${value:.4f}"
-            elif unit == "codex_credits":
-                fmt_cost = lambda value: f"{value:.2f} credits"
-            else:
-                fmt_cost = lambda value: f"{value:.4f} {unit}"
-            cost_bits = []
-            if isinstance(selected_cost, (int, float)):
-                cost_bits.append(f"selected {fmt_cost(selected_cost)}")
-            if isinstance(total_cost, (int, float)):
-                cost_bits.append(f"metered {fmt_cost(total_cost)}")
-            if isinstance(limit_cost, (int, float)):
-                cost_bits.append(f"limit {fmt_cost(limit_cost)}")
-            if accounting.get("checkpoint_count"):
-                cost_bits.append(f"{accounting.get('checkpoint_count')} checkpoint(s)")
-            if cost_bits:
-                cost_text = "<br><span class='muted'>same-cost: " + escape(", ".join(cost_bits)) + "</span>"
-        validator_text = ""
-        if accounting.get("validator_call_limit"):
-            validator_text = (
-                f", {accounting.get('validator_call_count', 0)}/"
-                f"{accounting.get('validator_call_limit')} validator calls"
-            )
-        tags = ", ".join(experiment.get("tags") or [])
-        factor_text = ", ".join(
-            f"{key}: {value}" for key, value in (experiment.get("factors") or {}).items()
-        )
-        details.append(
-            f"<section id='{escape(run['run_id'])}'>"
-            f"<h2>{escape(run['run_id'])}</h2>"
-            f"<p><b>Experiment:</b> {escape(str(experiment.get('name') or run.get('label') or run['run_id']))}</p>"
-            f"<p>{escape(str(experiment.get('description') or run.get('notes') or ''))}</p>"
-            f"<p class='muted'>{escape(tags)}"
-            f"{'<br>' if tags and factor_text else ''}{escape(factor_text)}</p>"
-            f"<p>{escape(str(run.get('notes') or ''))}</p>"
-            f"<p><b>Harness:</b> {escape(str(run.get('harness_mode') or ''))}"
-            f"{' / ' + escape(str(run.get('validator_access'))) if run.get('validator_access') else ''}</p>"
-            f"<p><b>Accounting:</b> {escape(_fmt_duration(accounting.get('wall_time_seconds')))}"
-            f" wall time ({escape(str(accounting.get('wall_time_source') or 'unknown'))}), "
-            f"{accounting.get('turns', 0)} turns, {accounting.get('tool_calls', 0)} tool calls, "
-            f"{escape(_fmt_tokens(accounting.get('total_tokens')))} total tokens."
-            f"{validator_text}"
-            f"<br><span class='muted'>{escape(token_text)}</span>{cost_text}</p>"
-            f"<p class='muted'>{' | '.join(links)}</p>"
-            "<table><thead><tr><th>Instance</th><th>Score</th><th>Passed</th><th>Time</th><th>Turns</th>"
-            "<th>Tools</th><th>Tokens</th><th>Status Counts</th><th>Error</th></tr></thead>"
-            f"<tbody>{''.join(inst_rows)}</tbody></table>"
-            f"<div class='failures'>{''.join(failure_blocks)}</div>"
-            "</section>"
-        )
-    css = """
-    body { font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 32px; color: #17202a; }
-    table { border-collapse: collapse; width: 100%; margin: 16px 0 32px; }
-    th, td { border-bottom: 1px solid #d6dde5; padding: 7px 9px; text-align: left; vertical-align: top; }
-    th { background: #f3f6f9; font-weight: 650; }
-    .num { text-align: right; font-variant-numeric: tabular-nums; }
-    .muted { color: #667085; }
-    code { background: #f4f4f5; padding: 1px 4px; border-radius: 4px; }
-    section { margin-top: 36px; }
-    ol { padding-left: 24px; }
-    li { margin: 8px 0; }
-    """
-    return (
-        "<!doctype html><meta charset='utf-8'>"
-        "<title>ProgramBench Lab Report</title>"
-        f"<style>{css}</style>"
-        "<h1>ProgramBench Lab Report</h1>"
-        f"<p class='muted'>Generated at {escape(str(index.get('generated_at', '')))} from "
-        f"{escape(str(index.get('runs_root', '')))}.</p>"
-        "<h2>Experiments</h2>"
-        "<table><thead><tr><th>Experiment</th><th>Runs</th><th>Score</th><th>Passed</th>"
-        "<th>Factors</th><th>Accounting</th></tr></thead>"
-        f"<tbody>{''.join(experiment_rows)}</tbody></table>"
-        "<h2>Runs</h2>"
-        "<table><thead><tr><th>Experiment</th><th>Run</th><th>Model</th><th>Reasoning</th><th>Eval/Sub</th>"
-        "<th>Score</th><th>Passed</th><th>Accounting</th><th>Created</th></tr></thead>"
-        f"<tbody>{''.join(rows)}</tbody></table>"
-        f"{''.join(details)}"
+    data_json = (
+        json.dumps(index, sort_keys=True)
+        .replace("&", "\\u0026")
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
     )
+    css = """
+    :root {
+      color-scheme: light;
+      --bg: #f7f8fa;
+      --panel: #ffffff;
+      --text: #17202a;
+      --muted: #667085;
+      --line: #d6dde5;
+      --line-soft: #e8edf2;
+      --accent: #22577a;
+      --accent-soft: #e6f0f5;
+      --good: #1b7f4d;
+      --warn: #a15c00;
+      --bad: #b42318;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    header {
+      padding: 22px 28px 18px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+    }
+    h1, h2, h3 { margin: 0; line-height: 1.2; letter-spacing: 0; }
+    h1 { font-size: 24px; }
+    h2 { font-size: 17px; }
+    h3 { font-size: 15px; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      background: #f1f4f7;
+      border: 1px solid var(--line-soft);
+      border-radius: 4px;
+      padding: 1px 4px;
+      overflow-wrap: anywhere;
+    }
+    input, select, button {
+      font: inherit;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text);
+      min-height: 34px;
+    }
+    input, select { padding: 6px 8px; width: 100%; }
+    button { padding: 6px 10px; cursor: pointer; }
+    button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td {
+      border-bottom: 1px solid var(--line-soft);
+      padding: 7px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: #344054;
+      background: #f4f6f8;
+      font-size: 12px;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .toolbar {
+      display: grid;
+      grid-template-columns: minmax(180px, 2fr) minmax(130px, 1fr) minmax(130px, 1fr) minmax(130px, 1fr);
+      gap: 10px;
+      margin-top: 16px;
+      max-width: 1080px;
+    }
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      margin-top: 10px;
+      color: var(--muted);
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 370px) minmax(0, 1fr);
+      min-height: calc(100vh - 126px);
+    }
+    .sidebar {
+      border-right: 1px solid var(--line);
+      background: #fbfcfd;
+      padding: 16px;
+      overflow: auto;
+      max-height: calc(100vh - 126px);
+    }
+    .main { padding: 18px 22px 40px; min-width: 0; }
+    .list { display: grid; gap: 8px; margin-top: 12px; }
+    .item {
+      width: 100%;
+      text-align: left;
+      background: var(--panel);
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      padding: 10px;
+      color: var(--text);
+    }
+    .item:hover { border-color: #b5c4d2; }
+    .item.active { border-color: var(--accent); background: var(--accent-soft); }
+    .item-title { font-weight: 700; overflow-wrap: anywhere; }
+    .item-meta, .muted { color: var(--muted); }
+    .item-meta { font-size: 12px; margin-top: 4px; }
+    .section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line-soft);
+      background: #fcfdff;
+    }
+    .section-body { padding: 12px 14px; overflow-x: auto; }
+    .metrics { display: flex; flex-wrap: wrap; gap: 8px; }
+    .metric {
+      border: 1px solid var(--line-soft);
+      border-radius: 6px;
+      padding: 6px 8px;
+      min-width: 90px;
+      background: #fff;
+    }
+    .metric b { display: block; font-size: 12px; color: var(--muted); font-weight: 650; }
+    .metric span { font-variant-numeric: tabular-nums; }
+    .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+    .chip {
+      border-radius: 999px;
+      background: #eef2f6;
+      border: 1px solid var(--line-soft);
+      padding: 2px 8px;
+      font-size: 12px;
+      color: #344054;
+    }
+    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .status-good { color: var(--good); font-weight: 700; }
+    .status-warn { color: var(--warn); font-weight: 700; }
+    .status-bad { color: var(--bad); font-weight: 700; }
+    .run-row { cursor: pointer; }
+    .run-row.active { background: var(--accent-soft); }
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(260px, 420px);
+      gap: 14px;
+    }
+    .kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 5px 12px; }
+    .kv dt { color: var(--muted); }
+    .kv dd { margin: 0; overflow-wrap: anywhere; }
+    .failures { display: grid; gap: 8px; }
+    .failure {
+      border: 1px solid var(--line-soft);
+      border-radius: 6px;
+      padding: 8px;
+      background: #fff;
+    }
+    .empty { padding: 18px; color: var(--muted); }
+    @media (max-width: 900px) {
+      .toolbar { grid-template-columns: 1fr 1fr; }
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { max-height: none; border-right: 0; border-bottom: 1px solid var(--line); }
+      .split { grid-template-columns: 1fr; }
+    }
+    """
+    script = r"""
+    const data = JSON.parse(document.getElementById("pb-data").textContent);
+    const byId = (id) => document.getElementById(id);
+    const state = { query: "", model: "", harness: "", status: "", experiment: null, run: null };
+
+    function html(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[ch]));
+    }
+    function score(value) {
+      const numeric = Number(value || 0);
+      return Math.abs(numeric - 1) < 0.000001 ? "solved" : String(Math.round(numeric * 100));
+    }
+    function duration(seconds) {
+      if (typeof seconds !== "number") return "";
+      const total = Math.max(0, Math.round(seconds));
+      const hours = Math.floor(total / 3600);
+      const minutes = Math.floor((total % 3600) / 60);
+      const secs = total % 60;
+      if (hours) return `${hours}h ${String(minutes).padStart(2, "0")}m`;
+      if (minutes) return `${minutes}m ${String(secs).padStart(2, "0")}s`;
+      return `${secs}s`;
+    }
+    function tokens(value) {
+      if (typeof value !== "number") return "";
+      if (value >= 1000000) return `${(value / 1000000).toFixed(2)}M`;
+      if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
+      return String(value);
+    }
+    function runExperimentName(run) {
+      return run.experiment?.name || run.label || run.run_id;
+    }
+    function artifactLink(path, label) {
+      return path ? `<a href="../${html(path)}">${html(label)}</a>` : "";
+    }
+    function factorText(factors) {
+      return Object.entries(factors || {}).map(([key, value]) => `${key}: ${value}`).join(", ");
+    }
+    function scoreClass(value) {
+      const numeric = Number(value || 0);
+      if (numeric >= 0.95) return "status-good";
+      if (numeric >= 0.7) return "status-warn";
+      return "status-bad";
+    }
+    function filterRun(run) {
+      const query = state.query.toLowerCase();
+      const haystack = [
+        run.run_id, runExperimentName(run), run.model, run.reasoning_effort,
+        run.harness_mode, run.validator_access, run.notes,
+        ...(run.experiment?.tags || []),
+        factorText(run.experiment?.factors || {})
+      ].join(" ").toLowerCase();
+      if (query && !haystack.includes(query)) return false;
+      if (state.model && run.model !== state.model) return false;
+      if (state.harness && run.harness_mode !== state.harness) return false;
+      if (state.status === "solved" && Math.abs(Number(run.average_score || 0) - 1) > 0.000001) return false;
+      if (state.status === "unsolved" && Math.abs(Number(run.average_score || 0) - 1) < 0.000001) return false;
+      return true;
+    }
+    function filteredRuns() {
+      return (data.runs || []).filter(filterRun);
+    }
+    function filteredExperiments() {
+      const allowed = new Set(filteredRuns().map(runExperimentName));
+      return (data.experiments || []).filter((experiment) => allowed.has(experiment.name));
+    }
+    function populateFilters() {
+      const models = [...new Set((data.runs || []).map((run) => run.model).filter(Boolean))].sort();
+      const harnesses = [...new Set((data.runs || []).map((run) => run.harness_mode).filter(Boolean))].sort();
+      byId("model-filter").innerHTML = `<option value="">All models</option>` + models.map((model) => `<option>${html(model)}</option>`).join("");
+      byId("harness-filter").innerHTML = `<option value="">All harnesses</option>` + harnesses.map((mode) => `<option>${html(mode)}</option>`).join("");
+    }
+    function renderSummary() {
+      byId("summary").innerHTML = [
+        `${data.total_experiments || 0} experiments`,
+        `${data.total_runs || 0} runs`,
+        `${data.evaluated_runs || 0} evaluated`,
+        `${score(data.average_score || 0)} average score`,
+        `generated ${html(data.generated_at || "")}`
+      ].map((item) => `<span>${item}</span>`).join("");
+    }
+    function renderExperimentList() {
+      const experiments = filteredExperiments();
+      if (!experiments.some((experiment) => experiment.name === state.experiment)) {
+        state.experiment = experiments[0]?.name || null;
+        state.run = null;
+      }
+      byId("experiment-list").innerHTML = experiments.length ? experiments.map((experiment) => {
+        const accounting = experiment.accounting || {};
+        return `<button class="item ${experiment.name === state.experiment ? "active" : ""}" data-experiment="${html(experiment.name)}">
+          <div class="item-title">${html(experiment.name)}</div>
+          <div class="item-meta">${experiment.evaluated_runs}/${experiment.run_count} runs · <span class="${scoreClass(experiment.average_score)}">${score(experiment.average_score)}</span> · ${experiment.total_resolved}/${experiment.total_tests}</div>
+          <div class="item-meta">${html((experiment.tags || []).join(", "))}</div>
+          <div class="item-meta">${duration(accounting.wall_time_seconds)} · ${tokens(accounting.total_tokens)}</div>
+        </button>`;
+      }).join("") : `<div class="empty">No experiments match the current filters.</div>`;
+      byId("experiment-list").querySelectorAll("[data-experiment]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.experiment = button.dataset.experiment;
+          state.run = null;
+          render();
+        });
+      });
+    }
+    function selectedExperimentRuns() {
+      return filteredRuns().filter((run) => runExperimentName(run) === state.experiment);
+    }
+    function renderExperimentDetail() {
+      const experiment = (data.experiments || []).find((item) => item.name === state.experiment);
+      const runs = selectedExperimentRuns();
+      if (!experiment) {
+        byId("experiment-detail").innerHTML = `<section class="section"><div class="empty">Select an experiment.</div></section>`;
+        byId("run-detail").innerHTML = "";
+        return;
+      }
+      if (!runs.some((run) => run.run_id === state.run)) {
+        state.run = runs[0]?.run_id || null;
+      }
+      const accounting = experiment.accounting || {};
+      const chips = [
+        ...(experiment.tags || []),
+        ...Object.entries(experiment.factors || {}).map(([key, value]) => `${key}: ${value}`)
+      ].map((item) => `<span class="chip">${html(item)}</span>`).join("");
+      const runRows = runs.map((run) => {
+        const runAccounting = run.accounting || {};
+        return `<tr class="run-row ${run.run_id === state.run ? "active" : ""}" data-run="${html(run.run_id)}">
+          <td><b>${html(run.run_id)}</b><br><span class="muted">${html(run.notes || "")}</span></td>
+          <td>${html(run.model || "")}</td>
+          <td>${html(run.reasoning_effort || "")}</td>
+          <td>${html(run.harness_mode || "")}</td>
+          <td class="num ${scoreClass(run.average_score)}">${score(run.average_score)}</td>
+          <td class="num">${run.total_resolved}/${run.total_tests}</td>
+          <td class="num">${duration(runAccounting.wall_time_seconds)}<br><span class="muted">${runAccounting.tool_calls || 0} tools, ${tokens(runAccounting.total_tokens)}</span></td>
+          <td>${html((run.created_at || "").split("T")[0])}</td>
+        </tr>`;
+      }).join("");
+      byId("experiment-detail").innerHTML = `<section class="section">
+        <div class="section-head">
+          <div>
+            <h2>${html(experiment.name)}</h2>
+            <div class="muted">${html(experiment.description || "")}</div>
+            <div class="chips">${chips}</div>
+          </div>
+          <div class="metrics">
+            <div class="metric"><b>Score</b><span class="${scoreClass(experiment.average_score)}">${score(experiment.average_score)}</span></div>
+            <div class="metric"><b>Passed</b><span>${experiment.total_resolved}/${experiment.total_tests}</span></div>
+            <div class="metric"><b>Runs</b><span>${experiment.evaluated_runs}/${experiment.run_count}</span></div>
+            <div class="metric"><b>Wall</b><span>${duration(accounting.wall_time_seconds)}</span></div>
+            <div class="metric"><b>Tokens</b><span>${tokens(accounting.total_tokens)}</span></div>
+          </div>
+        </div>
+        <div class="section-body">
+          <table><thead><tr><th>Run</th><th>Model</th><th>Effort</th><th>Harness</th><th>Score</th><th>Passed</th><th>Accounting</th><th>Created</th></tr></thead><tbody>${runRows}</tbody></table>
+        </div>
+      </section>`;
+      byId("experiment-detail").querySelectorAll("[data-run]").forEach((row) => {
+        row.addEventListener("click", () => {
+          state.run = row.dataset.run;
+          renderExperimentDetail();
+          renderRunDetail();
+        });
+      });
+    }
+    function renderRunDetail() {
+      const run = (data.runs || []).find((item) => item.run_id === state.run);
+      if (!run) {
+        byId("run-detail").innerHTML = "";
+        return;
+      }
+      const accounting = run.accounting || {};
+      const tokenText = Object.entries(accounting.tokens || {}).map(([key, value]) => `${key}: ${Number(value).toLocaleString()}`).join(", ") || "none";
+      const links = [
+        artifactLink(run.manifest_path, "manifest"),
+        artifactLink(run.prompt_path, "prompt"),
+        artifactLink(run.final_path, "final"),
+        artifactLink(run.events_path, "events")
+      ].filter(Boolean).join(" · ");
+      const instanceRows = (run.instances || []).map((inst) => {
+        const instAccounting = inst.accounting || {};
+        return `<tr>
+          <td><code>${html(inst.instance_id)}</code></td>
+          <td class="num ${scoreClass(inst.score)}">${score(inst.score)}</td>
+          <td class="num">${inst.n_resolved}/${inst.n_tests}</td>
+          <td class="num">${duration(instAccounting.wall_time_seconds)}</td>
+          <td class="num">${instAccounting.tool_calls || 0}</td>
+          <td class="num">${tokens(instAccounting.total_tokens)}</td>
+          <td>${html(Object.entries(inst.status_counts || {}).map(([key, value]) => `${key}:${value}`).join(", "))}</td>
+        </tr>`;
+      }).join("");
+      const failures = (run.instances || []).flatMap((inst) => (inst.top_failures || []).map((failure) => ({ ...failure, instance_id: inst.instance_id }))).slice(0, 16);
+      const failureRows = failures.length ? failures.map((failure) => `<div class="failure">
+        <div><code>${html(failure.name)}</code> <span class="muted">${html(failure.status || "")}</span></div>
+        <div class="muted">${html(failure.instance_id || "")}</div>
+        <div>${html(failure.message || "")}</div>
+      </div>`).join("") : `<div class="empty">No top failures recorded.</div>`;
+      byId("run-detail").innerHTML = `<section class="section">
+        <div class="section-head">
+          <div>
+            <h2>${html(run.run_id)}</h2>
+            <div class="muted">${html(run.notes || "")}</div>
+          </div>
+          <div class="metrics">
+            <div class="metric"><b>Score</b><span class="${scoreClass(run.average_score)}">${score(run.average_score)}</span></div>
+            <div class="metric"><b>Passed</b><span>${run.total_resolved}/${run.total_tests}</span></div>
+            <div class="metric"><b>Validator</b><span>${accounting.validator_call_count || 0}/${accounting.validator_call_limit || 0}</span></div>
+          </div>
+        </div>
+        <div class="section-body split">
+          <div>
+            <table><thead><tr><th>Instance</th><th>Score</th><th>Passed</th><th>Time</th><th>Tools</th><th>Tokens</th><th>Status</th></tr></thead><tbody>${instanceRows}</tbody></table>
+            <h3>Top Failures</h3>
+            <div class="failures">${failureRows}</div>
+          </div>
+          <div>
+            <dl class="kv">
+              <dt>Model</dt><dd>${html(run.model || "")}</dd>
+              <dt>Reasoning</dt><dd>${html(run.reasoning_effort || "")}</dd>
+              <dt>Harness</dt><dd>${html(run.harness_mode || "")}</dd>
+              <dt>Validator</dt><dd>${html(run.validator_access || "")}</dd>
+              <dt>Wall time</dt><dd>${duration(accounting.wall_time_seconds)} (${html(accounting.wall_time_source || "unknown")})</dd>
+              <dt>Turns</dt><dd>${accounting.turns || 0}</dd>
+              <dt>Tool calls</dt><dd>${accounting.tool_calls || 0}</dd>
+              <dt>Tokens</dt><dd>${tokens(accounting.total_tokens)}<br><span class="muted">${html(tokenText)}</span></dd>
+              <dt>Artifacts</dt><dd>${links || "<span class='muted'>none</span>"}</dd>
+            </dl>
+          </div>
+        </div>
+      </section>`;
+    }
+    function render() {
+      renderSummary();
+      renderExperimentList();
+      renderExperimentDetail();
+      renderRunDetail();
+    }
+    byId("search").addEventListener("input", (event) => { state.query = event.target.value; state.experiment = null; state.run = null; render(); });
+    byId("model-filter").addEventListener("change", (event) => { state.model = event.target.value; state.experiment = null; state.run = null; render(); });
+    byId("harness-filter").addEventListener("change", (event) => { state.harness = event.target.value; state.experiment = null; state.run = null; render(); });
+    byId("status-filter").addEventListener("change", (event) => { state.status = event.target.value; state.experiment = null; state.run = null; render(); });
+    populateFilters();
+    render();
+    """
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ProgramBench Lab</title>
+  <style>{css}</style>
+</head>
+<body>
+  <header>
+    <h1>ProgramBench Lab</h1>
+    <div id="summary" class="summary"></div>
+    <div class="toolbar" aria-label="Run filters">
+      <input id="search" type="search" placeholder="Search experiments, runs, models, prompts, tags">
+      <select id="model-filter" aria-label="Model filter"></select>
+      <select id="harness-filter" aria-label="Harness filter"></select>
+      <select id="status-filter" aria-label="Status filter">
+        <option value="">All statuses</option>
+        <option value="solved">Solved</option>
+        <option value="unsolved">Unsolved</option>
+      </select>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <h2>Experiments</h2>
+      <div id="experiment-list" class="list"></div>
+    </aside>
+    <section class="main" aria-live="polite">
+      <div id="experiment-detail"></div>
+      <div id="run-detail"></div>
+    </section>
+  </main>
+  <script type="application/json" id="pb-data">{data_json}</script>
+  <script>{script}</script>
+</body>
+</html>"""
 
 
 def write_html_report(runs_root: Path, output: Path, *, repo_root: Path | None = None) -> dict[str, Any]:

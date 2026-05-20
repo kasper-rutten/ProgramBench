@@ -5,8 +5,8 @@ It is intentionally layered:
 
 - `programbench lab summary runs/` prints a compact terminal table.
 - `programbench lab index runs/` writes a JSON index for other tools.
-- `programbench lab report runs/` writes a static HTML report.
-- `notebooks/runs_browser.py` is a marimo notebook/app for localhost browsing.
+- `programbench lab report runs/` writes a static HTML app for browsing and
+  comparing experiments, runs, instances, failures, and artifact links.
 
 ## Run Metadata
 
@@ -167,15 +167,19 @@ Black-box runs accept the same wall-clock argument, without validator access:
 scripts/run-codex-blackbox-task <instance_id> <run_dir> gpt-5.5 high 3600
 ```
 
-## Notebook Frontend
+## Web App
 
-Install or run with the `lab` dependency group:
+The generated report is a Python-produced static web app. It embeds the same
+run metadata produced by `programbench lab index`, then uses a small vanilla
+browser script for filtering and drilldown. There is no notebook runtime and no
+JavaScript framework dependency.
 
 ```bash
-uv run --group lab marimo edit notebooks/runs_browser.py
-uv run --group lab marimo run notebooks/runs_browser.py
+uv run programbench lab report runs/ --output reports/programbench-lab.html
+python3 -m http.server 8765
 ```
 
-The notebook exposes a text input for the runs root, a run selector, and an
-instance selector with score, pass/fail counts, artifact paths, Codex usage, and
-top failure messages.
+Then open `http://127.0.0.1:8765/reports/programbench-lab.html`.
+
+The app is experiment-first: select an experiment, compare its runs, inspect a
+run, and drill into instance scores, artifact paths, and top failure messages.

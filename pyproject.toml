@@ -30,9 +30,6 @@ build-backend = "uv_build"
 dev = [
     "pytest>=8",
 ]
-lab = [
-    "marimo>=0.10",
-]
 
 [tool.ruff]
 line-length = 120

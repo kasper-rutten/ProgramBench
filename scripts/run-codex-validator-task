@@ -1,0 +1,1214 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -lt 2 || $# -gt 6 ]]; then
+  cat >&2 <<'USAGE'
+Usage: scripts/run-codex-validator-task <instance_id> <run_dir> [model] [reasoning_effort] [wall_clock_seconds] [validator_calls]
+
+Creates a cleanroom workspace, gives Codex black-box reference and validator
+helpers, runs Codex CLI under a wall-clock cap, and packages
+<run_dir>/<instance_id>/submission.tar.gz.
+
+Optional same-cost mode:
+  SIMULATED_COST_LIMIT=<credits> scripts/run-codex-validator-task ...
+
+When a simulated cost limit is set, the runner uses resumable Codex turns,
+meters each completed turn with rough per-token prices, snapshots each turn,
+and publishes the last checkpoint whose cumulative simulated cost stayed under
+the budget. Validator calls are effectively unlimited in this mode.
+
+For Codex-plan simulations, SIMULATED_COST_LIMIT uses Codex credits by default.
+The legacy SIMULATED_COST_LIMIT_USD variable still works for API-dollar
+simulations.
+USAGE
+  exit 2
+fi
+
+if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+  echo "Refusing to run with OPENAI_API_KEY set; use Codex ChatGPT login for this workflow." >&2
+  exit 2
+fi
+
+instance_id="$1"
+run_dir="$2"
+model="${3:-gpt-5.5}"
+reasoning_effort="${4:-high}"
+wall_clock_seconds="${5:-3600}"
+validator_calls="${6:-5}"
+validator_timeout_seconds="${VALIDATOR_TIMEOUT_SECONDS:-300}"
+validator_failure_limit="${VALIDATOR_FAILURE_LIMIT:-24}"
+validator_failure_chars="${VALIDATOR_FAILURE_CHARS:-4000}"
+eval_workers="${EVAL_WORKERS:-1}"
+eval_branch_workers="${EVAL_BRANCH_WORKERS:-1}"
+eval_docker_cpus="${EVAL_DOCKER_CPUS:-2}"
+simulated_cost_limit="${SIMULATED_COST_LIMIT:-${SIMULATED_COST_LIMIT_CREDITS:-${SIMULATED_COST_LIMIT_USD:-}}}"
+simulated_cost_unit="${SIMULATED_COST_UNIT:-}"
+if [[ -z "$simulated_cost_unit" ]]; then
+  if [[ -n "${SIMULATED_COST_LIMIT_USD:-}" && -z "${SIMULATED_COST_LIMIT:-}" && -z "${SIMULATED_COST_LIMIT_CREDITS:-}" ]]; then
+    simulated_cost_unit="api_usd"
+  else
+    simulated_cost_unit="codex_credits"
+  fi
+fi
+simulated_cost_rate_card="${SIMULATED_COST_RATE_CARD:-$simulated_cost_unit}"
+default_input_per_mtok=""
+default_cached_input_per_mtok=""
+default_output_per_mtok=""
+case "$simulated_cost_rate_card:$model" in
+  codex_credits:gpt-5.5*|codex_credits:GPT-5.5*)
+    default_input_per_mtok="125"
+    default_cached_input_per_mtok="12.5"
+    default_output_per_mtok="750"
+    ;;
+  codex_credits:gpt-5.4-mini*|codex_credits:GPT-5.4-Mini*|codex_credits:gpt-5.4-nano*|codex_credits:GPT-5.4-Nano*)
+    default_input_per_mtok="18.75"
+    default_cached_input_per_mtok="1.875"
+    default_output_per_mtok="113"
+    ;;
+  codex_credits:gpt-5.4*|codex_credits:GPT-5.4*)
+    default_input_per_mtok="62.5"
+    default_cached_input_per_mtok="6.25"
+    default_output_per_mtok="375"
+    ;;
+  codex_credits:gpt-5.3-codex*|codex_credits:GPT-5.3-Codex*|codex_credits:gpt-5.2*|codex_credits:GPT-5.2*)
+    default_input_per_mtok="43.75"
+    default_cached_input_per_mtok="4.375"
+    default_output_per_mtok="350"
+    ;;
+  api_usd:gpt-5.5*|api_usd:GPT-5.5*)
+    default_input_per_mtok="5.00"
+    default_cached_input_per_mtok="0.50"
+    default_output_per_mtok="30.00"
+    ;;
+  api_usd:gpt-5.4-mini*|api_usd:GPT-5.4-Mini*)
+    default_input_per_mtok="0.75"
+    default_cached_input_per_mtok="0.075"
+    default_output_per_mtok="4.50"
+    ;;
+  api_usd:gpt-5.4-nano*|api_usd:GPT-5.4-Nano*)
+    default_input_per_mtok="0.20"
+    default_cached_input_per_mtok="0.02"
+    default_output_per_mtok="1.25"
+    ;;
+  api_usd:gpt-5.4*|api_usd:GPT-5.4*)
+    default_input_per_mtok="2.50"
+    default_cached_input_per_mtok="0.25"
+    default_output_per_mtok="15.00"
+    ;;
+  api_usd:gpt-5.3-codex*|api_usd:GPT-5.3-Codex*)
+    default_input_per_mtok="1.75"
+    default_cached_input_per_mtok="0.175"
+    default_output_per_mtok="14.00"
+    ;;
+  *)
+    default_input_per_mtok="125"
+    default_cached_input_per_mtok="12.5"
+    default_output_per_mtok="750"
+    ;;
+esac
+simulated_cost_input_per_mtok="${SIMULATED_COST_INPUT_PER_MTOK:-$default_input_per_mtok}"
+simulated_cost_cached_input_per_mtok="${SIMULATED_COST_CACHED_INPUT_PER_MTOK:-$default_cached_input_per_mtok}"
+simulated_cost_output_per_mtok="${SIMULATED_COST_OUTPUT_PER_MTOK:-$default_output_per_mtok}"
+simulated_cost_reasoning_per_mtok="${SIMULATED_COST_REASONING_PER_MTOK:-$simulated_cost_output_per_mtok}"
+same_cost_turn_wall_clock_seconds="${SIMULATED_COST_TURN_WALL_CLOCK_SECONDS:-900}"
+same_cost_max_turns="${SIMULATED_COST_MAX_TURNS:-50}"
+same_cost_mode="0"
+if [[ -n "$simulated_cost_limit" ]]; then
+  same_cost_mode="1"
+  validator_calls="${SIMULATED_COST_VALIDATOR_CALL_LIMIT:-1000000}"
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+codex_bin="${CODEX_BIN:-/Applications/Codex.app/Contents/Resources/codex}"
+docker_wrapper="$repo_root/scripts/docker-colima"
+solver_egress_mode="${PROGRAMBENCH_SOLVER_EGRESS_MODE:-openai-only}"
+solver_egress_guard="${PROGRAMBENCH_SOLVER_EGRESS_GUARD:-codex-workspace-write-filesystem-oracle}"
+export PROGRAMBENCH_SOLVER_EGRESS_GUARD="$solver_egress_guard"
+"$repo_root/scripts/require-codex-egress-guard" "$solver_egress_mode"
+workspace="$repo_root/$run_dir/workspaces/$instance_id"
+instance_out="$repo_root/$run_dir/$instance_id"
+prompt="$repo_root/$run_dir/prompts/$instance_id.txt"
+events="$repo_root/$run_dir/events/$instance_id.jsonl"
+final="$repo_root/$run_dir/finals/$instance_id.txt"
+accounting="$repo_root/$run_dir/accounting/$instance_id.json"
+oracle_root="$workspace/.programbench-oracle"
+oracle_host_root="$repo_root/$run_dir/oracle-host/$instance_id"
+
+image_name="$(
+  cd "$repo_root"
+  uv run python - "$instance_id" <<'PY'
+import sys
+from programbench.constants import image_name_from_instance_id
+print(image_name_from_instance_id(sys.argv[1]))
+PY
+)"
+cleanroom_image="${image_name}:task_cleanroom"
+
+mkdir -p "$repo_root/$run_dir/prompts" "$repo_root/$run_dir/events" "$repo_root/$run_dir/finals" \
+  "$repo_root/$run_dir/accounting" \
+  "$repo_root/$run_dir/workspaces" "$instance_out" "$oracle_host_root"
+rm -rf "$workspace"
+rm -rf "$oracle_host_root"
+mkdir -p "$oracle_host_root"
+
+RUN_JSON="$repo_root/$run_dir/run.json" RUN_ID="$(basename "$run_dir")" MODEL="$model" \
+  REASONING_EFFORT="$reasoning_effort" WALL_CLOCK_LIMIT_SECONDS="$wall_clock_seconds" \
+  VALIDATOR_CALL_LIMIT="$validator_calls" VALIDATOR_TIMEOUT_SECONDS="$validator_timeout_seconds" \
+  VALIDATOR_FAILURE_LIMIT="$validator_failure_limit" VALIDATOR_FAILURE_CHARS="$validator_failure_chars" \
+  EVAL_WORKERS="$eval_workers" EVAL_BRANCH_WORKERS="$eval_branch_workers" \
+  EVAL_DOCKER_CPUS="$eval_docker_cpus" SAME_COST_MODE="$same_cost_mode" \
+  SIMULATED_COST_LIMIT="$simulated_cost_limit" \
+  SIMULATED_COST_UNIT="$simulated_cost_unit" \
+  SIMULATED_COST_RATE_CARD="$simulated_cost_rate_card" \
+  SIMULATED_COST_INPUT_PER_MTOK="$simulated_cost_input_per_mtok" \
+  SIMULATED_COST_CACHED_INPUT_PER_MTOK="$simulated_cost_cached_input_per_mtok" \
+  SIMULATED_COST_OUTPUT_PER_MTOK="$simulated_cost_output_per_mtok" \
+  SIMULATED_COST_REASONING_PER_MTOK="$simulated_cost_reasoning_per_mtok" \
+  SIMULATED_COST_TURN_WALL_CLOCK_SECONDS="$same_cost_turn_wall_clock_seconds" \
+  SIMULATED_COST_MAX_TURNS="$same_cost_max_turns" \
+  SOLVER_EGRESS_MODE="$solver_egress_mode" \
+  SOLVER_EGRESS_GUARD="$solver_egress_guard" \
+  SOLVER_EGRESS_GUARD_ACTIVE="${PROGRAMBENCH_SOLVER_EGRESS_GUARD_ACTIVE:-}" python3 - <<'PY'
+import json
+import os
+from datetime import datetime, timezone
+from pathlib import Path
+
+path = Path(os.environ["RUN_JSON"])
+if path.exists():
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        data = {}
+else:
+    data = {}
+data.setdefault("run_id", os.environ["RUN_ID"])
+data.setdefault("created_at", datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"))
+data.setdefault("agent", "codex-cli")
+data["model"] = os.environ["MODEL"]
+data["reasoning_effort"] = os.environ["REASONING_EFFORT"]
+data["harness_mode"] = "validator-visible"
+data["validator_access"] = "full-eval-output"
+data["solver_network"] = os.environ["SOLVER_EGRESS_MODE"]
+data["solver_egress_guard"] = os.environ["SOLVER_EGRESS_GUARD"]
+data["solver_egress_guard_active"] = (
+    os.environ["SOLVER_EGRESS_GUARD_ACTIVE"] == "1"
+    or os.environ["SOLVER_EGRESS_GUARD"] == "codex-workspace-write-filesystem-oracle"
+)
+data["wall_clock_limit_seconds"] = int(os.environ["WALL_CLOCK_LIMIT_SECONDS"])
+data["validator_call_limit"] = int(os.environ["VALIDATOR_CALL_LIMIT"])
+data["validator_timeout_seconds"] = int(os.environ["VALIDATOR_TIMEOUT_SECONDS"])
+data["validator_failure_limit"] = int(os.environ["VALIDATOR_FAILURE_LIMIT"])
+data["validator_failure_chars"] = int(os.environ["VALIDATOR_FAILURE_CHARS"])
+data["eval_workers"] = int(os.environ["EVAL_WORKERS"])
+data["eval_branch_workers"] = int(os.environ["EVAL_BRANCH_WORKERS"])
+data["eval_docker_cpus"] = int(os.environ["EVAL_DOCKER_CPUS"])
+data["same_cost_mode"] = os.environ["SAME_COST_MODE"] == "1"
+if data["same_cost_mode"]:
+    data["harness_mode"] = "validator-visible-same-cost"
+    data["simulated_cost_limit"] = float(os.environ["SIMULATED_COST_LIMIT"])
+    data["simulated_cost_unit"] = os.environ["SIMULATED_COST_UNIT"]
+    data["simulated_cost_rate_card"] = os.environ["SIMULATED_COST_RATE_CARD"]
+    if data["simulated_cost_unit"] == "api_usd":
+        data["simulated_cost_limit_usd"] = data["simulated_cost_limit"]
+    data["simulated_cost_rates_per_mtok"] = {
+        "input": float(os.environ["SIMULATED_COST_INPUT_PER_MTOK"]),
+        "cached_input": float(os.environ["SIMULATED_COST_CACHED_INPUT_PER_MTOK"]),
+        "output": float(os.environ["SIMULATED_COST_OUTPUT_PER_MTOK"]),
+        "reasoning": float(os.environ["SIMULATED_COST_REASONING_PER_MTOK"]),
+    }
+    data["simulated_cost_turn_wall_clock_seconds"] = int(os.environ["SIMULATED_COST_TURN_WALL_CLOCK_SECONDS"])
+    data["simulated_cost_max_turns"] = int(os.environ["SIMULATED_COST_MAX_TURNS"])
+data.setdefault("docker_backend", "colima")
+data.setdefault("docker_platform", "linux/amd64")
+if data["same_cost_mode"]:
+    data.setdefault("notes", "Validator-visible ProgramBench task run with same simulated-cost budget.")
+else:
+    data.setdefault("notes", "Validator-visible ProgramBench task run with exact-solved target.")
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+PY
+
+"$docker_wrapper" pull "$cleanroom_image"
+cid="$("$docker_wrapper" create --platform linux/amd64 "$cleanroom_image" sleep 2h)"
+trap '"$docker_wrapper" rm -f "$cid" >/dev/null 2>&1 || true' EXIT
+"$docker_wrapper" cp "$cid:/workspace" "$workspace"
+"$docker_wrapper" rm -f "$cid" >/dev/null
+trap - EXIT
+rm -rf "$oracle_root"
+mkdir -p "$oracle_root/requests" "$oracle_root/responses"
+
+cat > "$workspace/query-reference.sh" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+workspace="$workspace"
+exec python3 "\$workspace/.programbench-oracle-client.py" reference "\$@"
+EOF
+chmod +x "$workspace/query-reference.sh"
+
+cat > "$workspace/.programbench-oracle-client.py" <<PY
+import base64
+import json
+import os
+import sys
+import time
+import uuid
+from pathlib import Path
+
+root = Path("$oracle_root")
+requests = root / "requests"
+responses = root / "responses"
+timeout = float(os.environ.get("PROGRAMBENCH_ORACLE_CLIENT_TIMEOUT_SECONDS", "900"))
+request_id = uuid.uuid4().hex
+payload = {
+    "id": request_id,
+    "kind": sys.argv[1],
+    "args": sys.argv[2:],
+    "stdin_b64": base64.b64encode(sys.stdin.buffer.read()).decode(),
+}
+tmp = requests / f".{request_id}.tmp"
+dst = requests / f"{request_id}.json"
+tmp.write_text(json.dumps(payload) + "\n")
+tmp.rename(dst)
+response_path = responses / f"{request_id}.json"
+deadline = time.monotonic() + timeout
+while time.monotonic() < deadline:
+    if response_path.exists():
+        response = json.loads(response_path.read_text())
+        sys.stdout.buffer.write(base64.b64decode(response.get("stdout_b64", "")))
+        sys.stderr.buffer.write(base64.b64decode(response.get("stderr_b64", "")))
+        raise SystemExit(int(response.get("exit_code", 1)))
+    time.sleep(0.05)
+print(f"oracle request timed out after {timeout:.0f}s", file=sys.stderr)
+raise SystemExit(124)
+PY
+
+cat > "$oracle_host_root/run-validator-host.sh" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+
+workspace="$workspace"
+counter_file="\$workspace/.validator-call-count"
+limit="$validator_calls"
+validator_timeout_seconds="$validator_timeout_seconds"
+validator_failure_limit="$validator_failure_limit"
+validator_failure_chars="$validator_failure_chars"
+eval_workers="$eval_workers"
+eval_branch_workers="$eval_branch_workers"
+eval_docker_cpus="$eval_docker_cpus"
+count=0
+if [[ -f "\$counter_file" ]]; then
+  count="\$(cat "\$counter_file")"
+fi
+count="\$((count + 1))"
+printf '%s\n' "\$count" > "\$counter_file"
+
+if [[ "\$count" -gt "\$limit" ]]; then
+  echo "VALIDATOR_RESULT: BUDGET_EXHAUSTED"
+  echo "VALIDATOR_CALLS: \$count/\$limit"
+  echo "The validator call limit has been exceeded. Stop iterating and prepare the best current submission."
+  exit 2
+fi
+
+if [[ ! -x "\$workspace/compile.sh" ]]; then
+  echo "VALIDATOR_RESULT: NOT_SOLVED"
+  echo "VALIDATOR_CALLS: \$count/\$limit"
+  echo "compile.sh is missing or not executable."
+  exit 0
+fi
+
+tmp_dir="\$(mktemp -d)"
+trap 'rm -rf "\$tmp_dir"' EXIT
+mkdir -p "\$tmp_dir/run/$instance_id"
+
+SUBMISSION_SRC="\$workspace" SUBMISSION_TAR="\$tmp_dir/run/$instance_id/submission.tar.gz" python3 - <<'PY'
+import os
+import tarfile
+from pathlib import Path
+
+src = Path(os.environ["SUBMISSION_SRC"])
+dst = Path(os.environ["SUBMISSION_TAR"])
+exclude_names = {
+    "query-reference.sh",
+    "docker-colima-local",
+    "run-validator.sh",
+    "executable",
+    ".validator-call-count",
+    ".programbench-oracle-client.py",
+}
+exclude_roots = {
+    "reference",
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".validator-artifacts",
+    ".programbench-oracle",
+    ".pbtmp",
+}
+dst.parent.mkdir(parents=True, exist_ok=True)
+with tarfile.open(dst, "w:gz") as tf:
+    for path in sorted(src.rglob("*")):
+        rel = path.relative_to(src)
+        if rel.parts[0] in exclude_roots or rel.name in exclude_names:
+            continue
+        info = tf.gettarinfo(str(path), arcname=str(rel))
+        info.uid = info.gid = 0
+        info.uname = info.gname = "root"
+        if path.is_file():
+            with path.open("rb") as f:
+                tf.addfile(info, f)
+        else:
+            tf.addfile(info)
+PY
+
+set +e
+REPO_ROOT="$repo_root" DOCKER_WRAPPER="$docker_wrapper" RUN_DIR="\$tmp_dir/run" \
+  INSTANCE_ID="$instance_id" VALIDATOR_OUT="\$tmp_dir/validator.out" \
+  VALIDATOR_TIMEOUT_SECONDS="\$validator_timeout_seconds" \
+  EVAL_WORKERS="\$eval_workers" EVAL_BRANCH_WORKERS="\$eval_branch_workers" \
+  EVAL_DOCKER_CPUS="\$eval_docker_cpus" BLOB_DIR="$repo_root/.programbench-blobs" python3 - <<'PY'
+import os
+import signal
+import subprocess
+import sys
+from pathlib import Path
+
+repo_root = Path(os.environ["REPO_ROOT"])
+instance_id = os.environ["INSTANCE_ID"]
+timeout = int(os.environ["VALIDATOR_TIMEOUT_SECONDS"])
+out_path = Path(os.environ["VALIDATOR_OUT"])
+cmd = [
+    "uv",
+    "run",
+    "programbench",
+    "eval",
+    os.environ["RUN_DIR"],
+    "--filter",
+    instance_id,
+    "--force",
+    "--workers",
+    os.environ["EVAL_WORKERS"],
+    "--branch-workers",
+    os.environ["EVAL_BRANCH_WORKERS"],
+    "--docker-cpus",
+    os.environ["EVAL_DOCKER_CPUS"],
+]
+env = os.environ.copy()
+env["PROGRAMBENCH_DOCKER_EXECUTABLE"] = os.environ["DOCKER_WRAPPER"]
+blob_dir = Path(os.environ["BLOB_DIR"])
+if (blob_dir / instance_id).is_dir():
+    env["PROGRAMBENCH_BLOB_DIR"] = str(blob_dir)
+else:
+    env.pop("PROGRAMBENCH_BLOB_DIR", None)
+
+with out_path.open("wb") as out:
+    proc = subprocess.Popen(
+        cmd,
+        cwd=repo_root,
+        env=env,
+        stdout=out,
+        stderr=subprocess.STDOUT,
+        preexec_fn=os.setsid,
+    )
+    try:
+        sys.exit(proc.wait(timeout=timeout))
+    except subprocess.TimeoutExpired:
+        out.write(f"validator timed out after {timeout}s\n".encode())
+        out.flush()
+        os.killpg(proc.pid, signal.SIGTERM)
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            os.killpg(proc.pid, signal.SIGKILL)
+            proc.wait()
+        sys.exit(124)
+PY
+eval_status="\$?"
+set -e
+
+eval_json="\$tmp_dir/run/$instance_id/$instance_id.eval.json"
+if [[ ! -f "\$eval_json" ]]; then
+  echo "VALIDATOR_RESULT: ERROR"
+  echo "VALIDATOR_CALLS: \$count/\$limit"
+  echo "programbench eval exit code: \$eval_status"
+  tail -n 80 "\$tmp_dir/validator.out"
+  exit 0
+fi
+
+(
+cd "$repo_root"
+EVAL_JSON="\$eval_json" INSTANCE_ID="$instance_id" VALIDATOR_CALLS="\$count" VALIDATOR_LIMIT="\$limit" \
+VALIDATOR_FAILURE_LIMIT="\$validator_failure_limit" VALIDATOR_FAILURE_CHARS="\$validator_failure_chars" \
+uv run python - <<'PY'
+import os
+from collections import Counter
+from pathlib import Path
+
+from programbench.eval.eval import EvaluationResult
+from programbench.utils.load_data import get_active_branches, get_ignored_tests, load_all_instances
+
+instance_id = os.environ["INSTANCE_ID"]
+result = EvaluationResult.model_validate_json(Path(os.environ["EVAL_JSON"]).read_text())
+instances = {i["instance_id"]: i for i in load_all_instances(include_tests=True)}
+inst = instances.get(instance_id)
+if inst is not None:
+    result = result.for_branches(get_active_branches(inst)).without_ignored(get_ignored_tests(inst))
+tests = result.test_results
+passed = result.n_resolved
+total = len(result)
+score = result.score
+solved = total > 0 and passed == total
+print(f"VALIDATOR_RESULT: {'SOLVED' if solved else 'NOT_SOLVED'}")
+print(f"VALIDATOR_CALLS: {os.environ['VALIDATOR_CALLS']}/{os.environ['VALIDATOR_LIMIT']}")
+print(f"SCORE: {score:.6f}")
+print(f"PASSED: {passed}/{total}")
+print("STATUS_COUNTS: " + ", ".join(f"{k}:{v}" for k, v in sorted(Counter(t.status for t in tests).items())))
+if not solved:
+    print("TOP_FAILURES:")
+    failure_limit = int(os.environ["VALIDATOR_FAILURE_LIMIT"])
+    failure_chars = int(os.environ["VALIDATOR_FAILURE_CHARS"])
+    shown = 0
+    for test in tests:
+        if test.status == "passed":
+            continue
+        extra = test.extra or {}
+        msg = str(extra.get("message") or extra.get("error_code") or "")
+        if len(msg) > failure_chars:
+            msg = msg[:failure_chars] + f"\n... <truncated at {failure_chars} chars>"
+        print(f"- {test.branch}/{test.name}: {test.status}")
+        if msg:
+            for line in msg.splitlines() or [""]:
+                print(f"  {line}")
+        shown += 1
+        if shown >= failure_limit:
+            break
+PY
+)
+EOF
+chmod +x "$oracle_host_root/run-validator-host.sh"
+
+cat > "$workspace/run-validator.sh" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+workspace="\$(cd "\$(dirname "\$0")" && pwd)"
+exec python3 "\$workspace/.programbench-oracle-client.py" validator
+EOF
+chmod +x "$workspace/run-validator.sh"
+
+if [[ "$same_cost_mode" == "1" ]]; then
+  budget_prompt=$(cat <<EOF
+External run controls:
+- The harness is checkpointing progress between iterations and will decide
+  whether to resume another iteration.
+- Validator calls are available during each iteration; run ./run-validator.sh
+  when you have a concrete implementation change to check.
+- Per-validator-call timeout: ${validator_timeout_seconds}s.
+- Validator failure output: top ${validator_failure_limit} failure(s), each
+  capped at ${validator_failure_chars} chars.
+- Validator eval parallelism: ${eval_workers} instance worker(s),
+  ${eval_branch_workers} branch worker(s), ${eval_docker_cpus} Docker CPU(s).
+EOF
+)
+  stop_prompt=$(cat <<'EOF'
+Do not stop merely because the implementation seems good. Stop only when:
+- ./run-validator.sh reports SOLVED, or
+- you have completed one focused implementation-and-validation iteration, or
+- further changes are clearly unlikely to improve the validator score.
+EOF
+)
+else
+  budget_prompt=$(cat <<EOF
+External budget:
+- Wall-clock limit for this Codex attempt: ${wall_clock_seconds}s.
+- Validator call limit: ${validator_calls}.
+- Per-validator-call timeout: ${validator_timeout_seconds}s.
+- Validator failure output: top ${validator_failure_limit} failure(s), each
+  capped at ${validator_failure_chars} chars.
+- Validator eval parallelism: ${eval_workers} instance worker(s),
+  ${eval_branch_workers} branch worker(s), ${eval_docker_cpus} Docker CPU(s).
+EOF
+)
+  stop_prompt=$(cat <<'EOF'
+Do not stop merely because the implementation seems good. Stop only when:
+- ./run-validator.sh reports SOLVED, or
+- the budget is exhausted, or
+- further changes are clearly unlikely to improve the validator score.
+EOF
+)
+fi
+
+cat > "$prompt" <<EOF
+You are attempting a real ProgramBench validator-visible reverse-engineering task.
+
+Instance: $instance_id
+
+You are in a cleanroom workspace extracted from the task image. Read any local
+docs, examples, source-adjacent files, and fixtures you can find.
+
+You have access to two oracles:
+
+1. ./query-reference.sh
+   Runs the original program for black-box behavior probing inside an offline
+   Docker container with --network none.
+
+2. ./run-validator.sh
+   Runs the official validator against your current implementation and reports
+   whether the task is exactly solved.
+
+Your objective is to reach exact validation pass: all non-ignored validator
+tests must pass. A rounded score of 100 is not enough; only a validator result
+marked SOLVED is complete.
+
+$budget_prompt
+
+Iterate aggressively:
+- inspect local docs and examples
+- implement the smallest plausible solution
+- create ./compile.sh
+- ./compile.sh must produce ./executable in the workspace
+- run ./run-validator.sh
+- use failing validator output to repair behavior
+- repeat until ./run-validator.sh reports SOLVED or the external budget ends
+
+$stop_prompt
+
+Do not include or depend on query-reference.sh, run-validator.sh,
+docker-colima-local, copied reference binaries, Docker, network access, or any
+file outside the submitted source tree.
+
+Treat the solver environment as internet-blocked except for Codex model
+traffic; do not try to fetch source, packages, or web pages.
+
+Leave ./compile.sh and source files ready for final evaluation.
+EOF
+
+if [[ "$same_cost_mode" == "1" ]]; then
+  cat >> "$prompt" <<EOF
+
+Same-cost controller:
+- Work in short, steady iterations.
+- In each turn, make one focused improvement, run ./run-validator.sh at most
+  once, then stop and summarize the current validator result.
+- The harness will resume you automatically when another iteration is available.
+EOF
+fi
+
+started_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+started_s="$(python3 - <<'PY'
+import time
+print(time.time())
+PY
+)"
+
+set +e
+CODEX_BIN="$codex_bin" MODEL="$model" REASONING_EFFORT="$reasoning_effort" WORKSPACE="$workspace" \
+  PROMPT="$prompt" FINAL="$final" EVENTS="$events" WALL_CLOCK_SECONDS="$wall_clock_seconds" \
+  SAME_COST_MODE="$same_cost_mode" INSTANCE_OUT="$instance_out" INSTANCE_ID="$instance_id" \
+  COST_METER_PATH="$repo_root/$run_dir/accounting/$instance_id.cost.json" \
+  CHECKPOINT_DIR="$repo_root/$run_dir/checkpoints/$instance_id" \
+  SIMULATED_COST_LIMIT="$simulated_cost_limit" \
+  SIMULATED_COST_UNIT="$simulated_cost_unit" \
+  SIMULATED_COST_RATE_CARD="$simulated_cost_rate_card" \
+  SIMULATED_COST_INPUT_PER_MTOK="$simulated_cost_input_per_mtok" \
+  SIMULATED_COST_CACHED_INPUT_PER_MTOK="$simulated_cost_cached_input_per_mtok" \
+	  SIMULATED_COST_OUTPUT_PER_MTOK="$simulated_cost_output_per_mtok" \
+	  SIMULATED_COST_REASONING_PER_MTOK="$simulated_cost_reasoning_per_mtok" \
+	  SIMULATED_COST_TURN_WALL_CLOCK_SECONDS="$same_cost_turn_wall_clock_seconds" \
+	  SIMULATED_COST_MAX_TURNS="$same_cost_max_turns" \
+	  SOLVER_EGRESS_MODE="$solver_egress_mode" \
+	  SOLVER_EGRESS_GUARD="$solver_egress_guard" \
+	  SOLVER_EGRESS_GUARD_ACTIVE="${PROGRAMBENCH_SOLVER_EGRESS_GUARD_ACTIVE:-}" \
+	  CLEANROOM_IMAGE="$cleanroom_image" DOCKER_WRAPPER="$docker_wrapper" \
+	  ORACLE_ROOT="$oracle_root" HOST_VALIDATOR_SCRIPT="$oracle_host_root/run-validator-host.sh" \
+	  VALIDATOR_TIMEOUT_SECONDS="$validator_timeout_seconds" python3 - <<'PY'
+import atexit
+import base64
+import json
+import os
+import re
+import selectors
+import signal
+import subprocess
+import sys
+import tarfile
+import threading
+import time
+from pathlib import Path
+
+workspace = Path(os.environ["WORKSPACE"])
+oracle_root = Path(os.environ["ORACLE_ROOT"])
+request_dir = oracle_root / "requests"
+response_dir = oracle_root / "responses"
+stop_oracle = threading.Event()
+
+
+def write_response(request_id: str, exit_code: int, stdout: bytes, stderr: bytes) -> None:
+    payload = {
+        "exit_code": exit_code,
+        "stdout_b64": base64.b64encode(stdout).decode(),
+        "stderr_b64": base64.b64encode(stderr).decode(),
+    }
+    tmp = response_dir / f".{request_id}.tmp"
+    dst = response_dir / f"{request_id}.json"
+    tmp.write_text(json.dumps(payload) + "\n")
+    tmp.rename(dst)
+
+
+def handle_request(path: Path) -> None:
+    try:
+        request = json.loads(path.read_text())
+        request_id = request["id"]
+        kind = request.get("kind")
+        if kind == "reference":
+            cmd = [
+                os.environ["DOCKER_WRAPPER"],
+                "run",
+                "--rm",
+                "-i",
+                "--network",
+                "none",
+                "--platform",
+                "linux/amd64",
+                os.environ["CLEANROOM_IMAGE"],
+                "/workspace/executable",
+                *[str(arg) for arg in request.get("args", [])],
+            ]
+            proc = subprocess.run(
+                cmd,
+                input=base64.b64decode(request.get("stdin_b64", "")),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=int(os.environ.get("PROGRAMBENCH_REFERENCE_TIMEOUT_SECONDS", "120")),
+            )
+            write_response(request_id, proc.returncode, proc.stdout, proc.stderr)
+        elif kind == "validator":
+            cmd = [os.environ["HOST_VALIDATOR_SCRIPT"]]
+            proc = subprocess.run(
+                cmd,
+                cwd=workspace,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                timeout=int(os.environ["VALIDATOR_TIMEOUT_SECONDS"]) + 60,
+            )
+            write_response(request_id, proc.returncode, proc.stdout, b"")
+        else:
+            write_response(request_id, 2, b"", f"unknown oracle request kind: {kind}\n".encode())
+    except Exception as exc:
+        request_id = path.stem
+        try:
+            request_id = json.loads(path.read_text()).get("id", request_id)
+        except Exception:
+            pass
+        write_response(str(request_id), 1, b"", f"oracle broker error: {exc}\n".encode())
+    finally:
+        path.unlink(missing_ok=True)
+
+
+def oracle_loop() -> None:
+    while not stop_oracle.is_set():
+        for path in sorted(request_dir.glob("*.json")):
+            processing = path.with_suffix(".processing")
+            try:
+                path.rename(processing)
+            except FileNotFoundError:
+                continue
+            handle_request(processing)
+        time.sleep(0.05)
+
+
+oracle_thread = threading.Thread(target=oracle_loop, name="programbench-oracle", daemon=True)
+oracle_thread.start()
+
+
+def stop_oracle_thread() -> None:
+    stop_oracle.set()
+    oracle_thread.join(timeout=2)
+
+
+atexit.register(stop_oracle_thread)
+
+def run_codex(cmd: list[str], stdin_path: Path, event_file, timeout: int) -> tuple[int, bool, dict]:
+    stdin_file = stdin_path.open("rb")
+    proc = subprocess.Popen(
+        cmd,
+        stdin=stdin_file,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        preexec_fn=os.setsid,
+    )
+    start = time.monotonic()
+    assert proc.stdout is not None
+    selector = selectors.DefaultSelector()
+    selector.register(proc.stdout, selectors.EVENT_READ)
+    timed_out = False
+    try:
+        while True:
+            if time.monotonic() - start > timeout:
+                timed_out = True
+                os.killpg(proc.pid, signal.SIGTERM)
+                try:
+                    proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                    proc.wait()
+                break
+            for key, _ in selector.select(timeout=0.2):
+                chunk = key.fileobj.readline()
+                if chunk:
+                    invocation_lines.append(chunk)
+                    sys.stdout.buffer.write(chunk)
+                    sys.stdout.buffer.flush()
+                    event_file.write(chunk)
+                    event_file.flush()
+                    continue
+            if proc.poll() is not None:
+                for chunk in proc.stdout.readlines():
+                    invocation_lines.append(chunk)
+                    sys.stdout.buffer.write(chunk)
+                    event_file.write(chunk)
+                sys.stdout.buffer.flush()
+                event_file.flush()
+                break
+    finally:
+        selector.close()
+        if proc.stdout is not None:
+            proc.stdout.close()
+        stdin_file.close()
+    rc = proc.returncode if proc.returncode is not None else proc.wait()
+    return (124 if timed_out else rc), timed_out, parse_invocation_events(invocation_lines)
+
+
+def make_initial_cmd(ephemeral: bool) -> list[str]:
+    codex_sandbox = "danger-full-access" if os.environ["SOLVER_EGRESS_MODE"] in {"off", "unguarded"} else "workspace-write"
+    cmd = [
+        os.environ["CODEX_BIN"],
+        "exec",
+        "--ignore-user-config",
+        "--ignore-rules",
+        "-m",
+        os.environ["MODEL"],
+        "-c",
+        f"model_reasoning_effort={os.environ['REASONING_EFFORT']!r}",
+        "--cd",
+        os.environ["WORKSPACE"],
+        "--sandbox",
+        codex_sandbox,
+        "-c",
+        'approval_policy="never"',
+        "--json",
+        "--color",
+        "never",
+        "--skip-git-repo-check",
+        "--output-last-message",
+        os.environ["FINAL"],
+    ]
+    if ephemeral:
+        cmd.insert(cmd.index("--json"), "--ephemeral")
+    return cmd
+
+
+def make_resume_cmd(thread_id: str) -> list[str]:
+    return [
+        os.environ["CODEX_BIN"],
+        "exec",
+        "resume",
+        "--ignore-user-config",
+        "--ignore-rules",
+        "-m",
+        os.environ["MODEL"],
+        "-c",
+        f"model_reasoning_effort={os.environ['REASONING_EFFORT']!r}",
+        "-c",
+        'approval_policy="never"',
+        "--json",
+        "--skip-git-repo-check",
+        "--output-last-message",
+        os.environ["FINAL"],
+        thread_id,
+        "-",
+    ]
+
+
+def parse_invocation_events(lines: list[bytes]) -> dict:
+    summary = {
+        "thread_id": None,
+        "usage": {},
+        "validator_result": None,
+        "validator_calls": None,
+        "validator_passed": None,
+        "validator_total": None,
+        "solved": False,
+    }
+    result_re = re.compile(r"VALIDATOR_RESULT:\s*(?P<result>[^\n]+)")
+    calls_re = re.compile(r"VALIDATOR_CALLS:\s*(?P<count>\d+)/(?:\d+)")
+    passed_re = re.compile(r"PASSED:\s*(?P<passed>\d+)/(?:\s*)?(?P<total>\d+)")
+    for raw in lines:
+        line = raw.decode(errors="replace")
+        if not line.startswith("{"):
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("type") == "thread.started":
+            summary["thread_id"] = event.get("thread_id")
+        if event.get("type") == "turn.completed" and isinstance(event.get("usage"), dict):
+            summary["usage"] = {k: int(v) for k, v in event["usage"].items() if isinstance(v, int)}
+        item = event.get("item")
+        if not isinstance(item, dict) or item.get("type") != "command_execution":
+            continue
+        command = str(item.get("command") or "")
+        output = str(item.get("aggregated_output") or "")
+        if "run-validator.sh" not in command or "VALIDATOR_RESULT:" not in output:
+            continue
+        result_match = result_re.search(output)
+        calls_match = calls_re.search(output)
+        passed_match = passed_re.search(output)
+        if result_match:
+            result = result_match.group("result").strip()
+            summary["validator_result"] = result
+            summary["solved"] = result == "SOLVED"
+        if calls_match:
+            summary["validator_calls"] = int(calls_match.group("count"))
+        if passed_match:
+            summary["validator_passed"] = int(passed_match.group("passed"))
+            summary["validator_total"] = int(passed_match.group("total"))
+    return summary
+
+
+def usage_cost(usage: dict, rates: dict[str, float]) -> float:
+    input_tokens = int(usage.get("input_tokens", 0))
+    cached_tokens = int(usage.get("cached_input_tokens", 0))
+    uncached_tokens = max(0, input_tokens - cached_tokens)
+    output_tokens = int(usage.get("output_tokens", 0))
+    reasoning_tokens = int(usage.get("reasoning_output_tokens", 0))
+    return (
+        uncached_tokens * rates["input"]
+        + cached_tokens * rates["cached_input"]
+        + output_tokens * rates["output"]
+        + reasoning_tokens * rates["reasoning"]
+    ) / 1_000_000
+
+
+def make_submission_tar(dst: Path) -> None:
+    src = Path(os.environ["WORKSPACE"])
+    exclude_names = {
+        "query-reference.sh",
+        "docker-colima-local",
+        "run-validator.sh",
+        "executable",
+        ".validator-call-count",
+        ".programbench-oracle-client.py",
+    }
+    exclude_roots = {
+        "reference",
+        ".git",
+        "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".validator-artifacts",
+        ".programbench-oracle",
+        ".pbtmp",
+    }
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    with tarfile.open(dst, "w:gz") as tf:
+        for path in sorted(src.rglob("*")):
+            rel = path.relative_to(src)
+            if rel.parts[0] in exclude_roots or rel.name in exclude_names:
+                continue
+            info = tf.gettarinfo(str(path), arcname=str(rel))
+            info.uid = info.gid = 0
+            info.uname = info.gname = "root"
+            if path.is_file():
+                with path.open("rb") as f:
+                    tf.addfile(info, f)
+            else:
+                tf.addfile(info)
+
+
+def write_resume_prompt(path: Path, turn: int) -> None:
+    path.write_text(
+        "Continue the ProgramBench task in the same workspace.\n"
+        f"Controller iteration: {turn}.\n"
+        "Make one focused improvement, run ./run-validator.sh at most once, then stop and summarize the validator result.\n"
+        "If ./run-validator.sh reports SOLVED, stop immediately after summarizing it.\n"
+    )
+
+
+events = Path(os.environ["EVENTS"])
+events.parent.mkdir(parents=True, exist_ok=True)
+invocation_lines: list[bytes] = []
+
+# Normal mode: preserve the original single ephemeral Codex turn.
+if os.environ["SAME_COST_MODE"] != "1":
+    with events.open("wb") as event_file:
+        rc, timed_out, _ = run_codex(
+            make_initial_cmd(ephemeral=True),
+            Path(os.environ["PROMPT"]),
+            event_file,
+            int(os.environ["WALL_CLOCK_SECONDS"]),
+        )
+    sys.exit(rc)
+
+cost_limit = float(os.environ["SIMULATED_COST_LIMIT"])
+cost_unit = os.environ["SIMULATED_COST_UNIT"]
+rate_card = os.environ["SIMULATED_COST_RATE_CARD"]
+rates = {
+    "input": float(os.environ["SIMULATED_COST_INPUT_PER_MTOK"]),
+    "cached_input": float(os.environ["SIMULATED_COST_CACHED_INPUT_PER_MTOK"]),
+    "output": float(os.environ["SIMULATED_COST_OUTPUT_PER_MTOK"]),
+    "reasoning": float(os.environ["SIMULATED_COST_REASONING_PER_MTOK"]),
+}
+turn_timeout = int(os.environ["SIMULATED_COST_TURN_WALL_CLOCK_SECONDS"])
+max_turns = int(os.environ["SIMULATED_COST_MAX_TURNS"])
+overall_timeout = int(os.environ["WALL_CLOCK_SECONDS"])
+checkpoint_dir = Path(os.environ["CHECKPOINT_DIR"])
+checkpoint_dir.mkdir(parents=True, exist_ok=True)
+cost_path = Path(os.environ["COST_METER_PATH"])
+resume_prompt = checkpoint_dir / "resume-prompt.txt"
+final_submission = Path(os.environ["INSTANCE_OUT"]) / "submission.tar.gz"
+
+trace = []
+thread_id = None
+cumulative_cost = 0.0
+selected_checkpoint: Path | None = None
+selected_cost: float | None = None
+selected_turn: int | None = None
+selected_validator_calls = 0
+last_checkpoint: Path | None = None
+last_rc = 0
+started = time.monotonic()
+
+with events.open("wb") as event_file:
+    for turn in range(1, max_turns + 1):
+        remaining_wall = overall_timeout - int(time.monotonic() - started)
+        if remaining_wall <= 0:
+            last_rc = 124
+            break
+        invocation_lines = []
+        if turn == 1:
+            stdin_path = Path(os.environ["PROMPT"])
+            cmd = make_initial_cmd(ephemeral=False)
+        else:
+            assert thread_id is not None
+            write_resume_prompt(resume_prompt, turn)
+            stdin_path = resume_prompt
+            cmd = make_resume_cmd(thread_id)
+
+        rc, timed_out, summary = run_codex(cmd, stdin_path, event_file, min(turn_timeout, remaining_wall))
+        last_rc = rc
+        if summary.get("thread_id"):
+            thread_id = summary["thread_id"]
+        usage = summary.get("usage") or {}
+        turn_cost = usage_cost(usage, rates)
+        cumulative_cost += turn_cost
+        checkpoint = checkpoint_dir / f"turn-{turn:03d}-submission.tar.gz"
+        make_submission_tar(checkpoint)
+        last_checkpoint = checkpoint
+        within_budget = cumulative_cost <= cost_limit
+        validator_calls = summary.get("validator_calls")
+        if isinstance(validator_calls, int):
+            selected_validator_calls = max(selected_validator_calls, validator_calls)
+        if within_budget:
+            selected_checkpoint = checkpoint
+            selected_cost = cumulative_cost
+            selected_turn = turn
+        trace.append(
+            {
+                "turn": turn,
+                "exit_code": rc,
+                "timed_out": timed_out,
+                "usage": usage,
+                "turn_simulated_cost_usd": turn_cost,
+                "cumulative_simulated_cost_usd": cumulative_cost,
+                "within_budget": within_budget,
+                "checkpoint": str(checkpoint),
+                "validator_result": summary.get("validator_result"),
+                "validator_calls": validator_calls,
+                "validator_passed": summary.get("validator_passed"),
+                "validator_total": summary.get("validator_total"),
+            }
+        )
+        if timed_out or rc not in (0, 124):
+            break
+        if summary.get("solved"):
+            break
+        if cumulative_cost > cost_limit:
+            break
+        if thread_id is None:
+            break
+
+if selected_checkpoint is None:
+    selected_checkpoint = last_checkpoint
+    selected_cost = cumulative_cost if last_checkpoint is not None else None
+    selected_turn = trace[-1]["turn"] if trace else None
+
+if selected_checkpoint is not None:
+    final_submission.parent.mkdir(parents=True, exist_ok=True)
+    final_submission.write_bytes(selected_checkpoint.read_bytes())
+
+cost_payload = {
+    "same_cost_mode": True,
+    "simulated_cost_limit": cost_limit,
+    "simulated_cost_unit": cost_unit,
+    "simulated_cost_rate_card": rate_card,
+    "simulated_cost_rates_per_mtok": rates,
+    "simulated_cost": cumulative_cost,
+    "simulated_cost_selected": selected_cost,
+    "simulated_cost_exceeded": cumulative_cost > cost_limit,
+    "simulated_cost_turn_wall_clock_seconds": turn_timeout,
+    "simulated_cost_max_turns": max_turns,
+    "checkpoint_count": len(trace),
+    "selected_checkpoint": str(selected_checkpoint) if selected_checkpoint is not None else None,
+    "selected_turn": selected_turn,
+    "selected_validator_call_count": selected_validator_calls,
+    "trace": trace,
+}
+if cost_unit == "api_usd":
+    cost_payload["simulated_cost_limit_usd"] = cost_limit
+    cost_payload["simulated_cost_usd"] = cumulative_cost
+    cost_payload["simulated_cost_selected_usd"] = selected_cost
+cost_path.parent.mkdir(parents=True, exist_ok=True)
+cost_path.write_text(json.dumps(cost_payload, indent=2, sort_keys=True) + "\n")
+sys.exit(last_rc)
+PY
+codex_status="$?"
+set -e
+
+ended_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+ended_s="$(python3 - <<'PY'
+import time
+print(time.time())
+PY
+)"
+validator_call_count="0"
+if [[ -f "$workspace/.validator-call-count" ]]; then
+  validator_call_count="$(cat "$workspace/.validator-call-count")"
+fi
+ACCOUNTING_PATH="$accounting" STARTED_AT="$started_at" ENDED_AT="$ended_at" \
+  STARTED_S="$started_s" ENDED_S="$ended_s" CODEX_STATUS="$codex_status" \
+  MODEL="$model" REASONING_EFFORT="$reasoning_effort" INSTANCE_ID="$instance_id" \
+  HARNESS_MODE="$([[ "$same_cost_mode" == "1" ]] && echo "validator-visible-same-cost" || echo "validator-visible")" \
+  WALL_CLOCK_LIMIT_SECONDS="$wall_clock_seconds" SAME_COST_MODE="$same_cost_mode" \
+  VALIDATOR_CALL_LIMIT="$validator_calls" VALIDATOR_CALL_COUNT="$validator_call_count" \
+  VALIDATOR_TIMEOUT_SECONDS="$validator_timeout_seconds" \
+  VALIDATOR_FAILURE_LIMIT="$validator_failure_limit" VALIDATOR_FAILURE_CHARS="$validator_failure_chars" \
+  COST_METER_PATH="$repo_root/$run_dir/accounting/$instance_id.cost.json" \
+  SOLVER_EGRESS_MODE="$solver_egress_mode" \
+  SOLVER_EGRESS_GUARD="$solver_egress_guard" \
+  SOLVER_EGRESS_GUARD_ACTIVE="${PROGRAMBENCH_SOLVER_EGRESS_GUARD_ACTIVE:-}" \
+  EVAL_WORKERS="$eval_workers" \
+  EVAL_BRANCH_WORKERS="$eval_branch_workers" EVAL_DOCKER_CPUS="$eval_docker_cpus" python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+started = float(os.environ["STARTED_S"])
+ended = float(os.environ["ENDED_S"])
+payload = {
+    "instance_id": os.environ["INSTANCE_ID"],
+    "model": os.environ["MODEL"],
+    "reasoning_effort": os.environ["REASONING_EFFORT"],
+    "harness_mode": os.environ["HARNESS_MODE"],
+    "started_at": os.environ["STARTED_AT"],
+    "ended_at": os.environ["ENDED_AT"],
+    "wall_time_seconds": max(0.0, ended - started),
+    "wall_clock_limit_seconds": int(os.environ["WALL_CLOCK_LIMIT_SECONDS"]),
+    "validator_call_limit": int(os.environ["VALIDATOR_CALL_LIMIT"]),
+    "validator_call_count": int(os.environ["VALIDATOR_CALL_COUNT"]),
+    "validator_timeout_seconds": int(os.environ["VALIDATOR_TIMEOUT_SECONDS"]),
+    "validator_failure_limit": int(os.environ["VALIDATOR_FAILURE_LIMIT"]),
+    "validator_failure_chars": int(os.environ["VALIDATOR_FAILURE_CHARS"]),
+    "eval_workers": int(os.environ["EVAL_WORKERS"]),
+    "eval_branch_workers": int(os.environ["EVAL_BRANCH_WORKERS"]),
+    "eval_docker_cpus": int(os.environ["EVAL_DOCKER_CPUS"]),
+    "codex_exit_code": int(os.environ["CODEX_STATUS"]),
+    "solver_network": os.environ["SOLVER_EGRESS_MODE"],
+    "solver_egress_guard": os.environ["SOLVER_EGRESS_GUARD"],
+    "solver_egress_guard_active": (
+        os.environ["SOLVER_EGRESS_GUARD_ACTIVE"] == "1"
+        or os.environ["SOLVER_EGRESS_GUARD"] == "codex-workspace-write-filesystem-oracle"
+    ),
+}
+cost_path = Path(os.environ["COST_METER_PATH"])
+if os.environ["SAME_COST_MODE"] == "1" and cost_path.exists():
+    cost_payload = json.loads(cost_path.read_text())
+    payload.update(
+        {
+            "same_cost_mode": True,
+            "simulated_cost_limit": cost_payload.get("simulated_cost_limit"),
+            "simulated_cost_unit": cost_payload.get("simulated_cost_unit"),
+            "simulated_cost_rate_card": cost_payload.get("simulated_cost_rate_card"),
+            "simulated_cost_rates_per_mtok": cost_payload.get("simulated_cost_rates_per_mtok"),
+            "simulated_cost": cost_payload.get("simulated_cost"),
+            "simulated_cost_selected": cost_payload.get("simulated_cost_selected"),
+            "simulated_cost_exceeded": cost_payload.get("simulated_cost_exceeded"),
+            "simulated_cost_turn_wall_clock_seconds": cost_payload.get("simulated_cost_turn_wall_clock_seconds"),
+            "simulated_cost_max_turns": cost_payload.get("simulated_cost_max_turns"),
+            "checkpoint_count": cost_payload.get("checkpoint_count"),
+            "selected_checkpoint": cost_payload.get("selected_checkpoint"),
+            "selected_turn": cost_payload.get("selected_turn"),
+            "selected_validator_call_count": cost_payload.get("selected_validator_call_count"),
+            "cost_meter_path": str(cost_path),
+        }
+    )
+    if cost_payload.get("simulated_cost_unit") == "api_usd":
+        payload["simulated_cost_limit_usd"] = cost_payload.get("simulated_cost_limit_usd")
+        payload["simulated_cost_usd"] = cost_payload.get("simulated_cost_usd")
+        payload["simulated_cost_selected_usd"] = cost_payload.get("simulated_cost_selected_usd")
+path = Path(os.environ["ACCOUNTING_PATH"])
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+PY
+
+if [[ "$codex_status" -ne 0 && "$codex_status" -ne 124 ]]; then
+  exit "$codex_status"
+fi
+
+if [[ "$same_cost_mode" == "1" && -f "$instance_out/submission.tar.gz" ]]; then
+  echo "$instance_out/submission.tar.gz"
+  exit 0
+fi
+
+SUBMISSION_SRC="$workspace" SUBMISSION_TAR="$instance_out/submission.tar.gz" python3 - <<'PY'
+import os
+import tarfile
+from pathlib import Path
+
+src = Path(os.environ["SUBMISSION_SRC"])
+dst = Path(os.environ["SUBMISSION_TAR"])
+exclude_names = {
+    "query-reference.sh",
+    "docker-colima-local",
+    "run-validator.sh",
+    "executable",
+    ".validator-call-count",
+    ".programbench-oracle-client.py",
+}
+exclude_roots = {
+    "reference",
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".validator-artifacts",
+    ".programbench-oracle",
+    ".pbtmp",
+}
+dst.parent.mkdir(parents=True, exist_ok=True)
+with tarfile.open(dst, "w:gz") as tf:
+    for path in sorted(src.rglob("*")):
+        rel = path.relative_to(src)
+        if rel.parts[0] in exclude_roots or rel.name in exclude_names:
+            continue
+        info = tf.gettarinfo(str(path), arcname=str(rel))
+        info.uid = info.gid = 0
+        info.uname = info.gname = "root"
+        if path.is_file():
+            with path.open("rb") as f:
+                tf.addfile(info, f)
+        else:
+            tf.addfile(info)
+print(dst)
+PY

@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+instance_id="testorg__calculator.abc1234"
+run_root="$repo_root/runs/codex-calculator"
+workdir="$run_root/workspace"
+outdir="$run_root/$instance_id"
+last_message="$run_root/final.txt"
+events="$run_root/events.jsonl"
+prompt="$run_root/prompt.txt"
+
+if env | grep -q '^OPENAI_API_KEY='; then
+  echo "Refusing to run: OPENAI_API_KEY is set. Use ChatGPT Codex login for this gate." >&2
+  exit 2
+fi
+
+if ! codex login status 2>&1 | grep -q 'Logged in using ChatGPT'; then
+  echo "Refusing to run: codex CLI is not logged in using ChatGPT." >&2
+  exit 2
+fi
+
+rm -rf "$run_root"
+mkdir -p "$workdir" "$outdir"
+
+cat >"$prompt" <<'PROMPT'
+Create a tiny bash calculator submission for ProgramBench's toy calculator task.
+
+Requirements:
+- Create calculator.sh.
+- Create compile.sh.
+- compile.sh must produce an executable file named executable in the current directory.
+- executable must support:
+  - ./executable A + B
+  - ./executable A - B
+  - ./executable A '*' B
+- Inputs are small signed integers.
+- Print only the integer result and a trailing newline.
+- Do not use the internet.
+PROMPT
+
+codex exec \
+  --cd "$workdir" \
+  --sandbox workspace-write \
+  -c 'approval_policy="never"' \
+  --ephemeral \
+  --json \
+  --color never \
+  --skip-git-repo-check \
+  --output-last-message "$last_message" \
+  <"$prompt" | tee "$events"
+
+test -f "$workdir/compile.sh"
+test -f "$workdir/calculator.sh"
+SUBMISSION_SRC="$workdir" SUBMISSION_TAR="$outdir/submission.tar.gz" python3 - <<'PY'
+from pathlib import Path
+import os
+import tarfile
+
+src = Path(os.environ["SUBMISSION_SRC"])
+dst = Path(os.environ["SUBMISSION_TAR"])
+with tarfile.open(dst, "w:gz") as tf:
+    for path in sorted(src.rglob("*")):
+        if ".git" in path.relative_to(src).parts:
+            continue
+        arcname = path.relative_to(src)
+        info = tf.gettarinfo(str(path), arcname=str(arcname))
+        info.uid = info.gid = 0
+        info.uname = info.gname = "root"
+        if path.is_file():
+            with path.open("rb") as f:
+                tf.addfile(info, f)
+        else:
+            tf.addfile(info)
+PY
+
+echo "$outdir/submission.tar.gz"

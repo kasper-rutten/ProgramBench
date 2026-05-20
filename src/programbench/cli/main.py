@@ -9,6 +9,7 @@ from pathlib import Path
 import typer
 
 from programbench.cli.blob import app as blob_app
+from programbench.cli.lab import app as lab_app
 from programbench.constants import DOCKER_CPUS
 
 app = typer.Typer(
@@ -18,6 +19,7 @@ app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 app.add_typer(blob_app, name="blob")
+app.add_typer(lab_app, name="lab")
 
 
 @app.callback()

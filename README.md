@@ -6,6 +6,13 @@
 Given only a compiled binary and its documentation, AI agents must architect and implement a complete codebase that reproduces the original program's behavior.
 </p>
 
+> [!NOTE]
+> This is a public fork of `facebookresearch/programbench` used to explore
+> local "run your own benchmark" workflows, including Codex CLI runners,
+> validator-visible experiments, Colima/Docker convenience tooling, and local
+> run reports. See [TODO.md](TODO.md) for the current publishability and
+> portability plan.
+
 ## Links
 
 - [Website](https://programbench.com)

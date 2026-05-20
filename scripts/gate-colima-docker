@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+"$repo_root/scripts/prepare-colima-docker-config" >/dev/null
+
+echo "Docker context:"
+"$repo_root/scripts/docker-colima" version --format 'client={{.Client.Version}} server={{.Server.Version}}'
+
+echo
+echo "Docker daemon:"
+"$repo_root/scripts/docker-colima" info --format 'name={{.Name}} os={{.OSType}} arch={{.Architecture}} cpus={{.NCPU}}'
+
+echo
+echo "amd64 pull/run smoke:"
+"$repo_root/scripts/docker-colima" run --rm --platform linux/amd64 hello-world >/tmp/programbench-hello-world.txt
+grep -q "Hello from Docker" /tmp/programbench-hello-world.txt
+cat /tmp/programbench-hello-world.txt

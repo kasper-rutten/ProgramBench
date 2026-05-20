@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+config_dir="${PROGRAMBENCH_DOCKER_CONFIG:-$repo_root/.docker-colima}"
+
+mkdir -p "$config_dir"
+
+if [[ ! -f "$config_dir/config.json" ]]; then
+cat >"$config_dir/config.json" <<'JSON'
+{
+  "auths": {}
+}
+JSON
+fi
+
+printf '%s\n' "$config_dir"

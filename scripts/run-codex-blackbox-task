@@ -1,0 +1,425 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -lt 2 || $# -gt 5 ]]; then
+  cat >&2 <<'USAGE'
+Usage: scripts/run-codex-blackbox-task <instance_id> <run_dir> [model] [reasoning_effort] [wall_clock_seconds]
+
+Creates a cleanroom workspace, gives Codex a black-box reference helper, runs
+Codex CLI under a wall-clock cap, and packages
+<run_dir>/<instance_id>/submission.tar.gz.
+USAGE
+  exit 2
+fi
+
+if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+  echo "Refusing to run with OPENAI_API_KEY set; use Codex ChatGPT login for this workflow." >&2
+  exit 2
+fi
+
+instance_id="$1"
+run_dir="$2"
+model="${3:-gpt-5.5}"
+reasoning_effort="${4:-high}"
+wall_clock_seconds="${5:-3600}"
+
+repo_root="$(git rev-parse --show-toplevel)"
+codex_bin="${CODEX_BIN:-/Applications/Codex.app/Contents/Resources/codex}"
+docker_wrapper="$repo_root/scripts/docker-colima"
+solver_egress_mode="${PROGRAMBENCH_SOLVER_EGRESS_MODE:-openai-only}"
+solver_egress_guard="${PROGRAMBENCH_SOLVER_EGRESS_GUARD:-codex-workspace-write-filesystem-oracle}"
+export PROGRAMBENCH_SOLVER_EGRESS_GUARD="$solver_egress_guard"
+"$repo_root/scripts/require-codex-egress-guard" "$solver_egress_mode"
+workspace="$repo_root/$run_dir/workspaces/$instance_id"
+instance_out="$repo_root/$run_dir/$instance_id"
+prompt="$repo_root/$run_dir/prompts/$instance_id.txt"
+events="$repo_root/$run_dir/events/$instance_id.jsonl"
+final="$repo_root/$run_dir/finals/$instance_id.txt"
+accounting="$repo_root/$run_dir/accounting/$instance_id.json"
+oracle_root="$workspace/.programbench-oracle"
+
+image_name="$(
+  cd "$repo_root"
+  uv run python - "$instance_id" <<'PY'
+import sys
+from programbench.constants import image_name_from_instance_id
+print(image_name_from_instance_id(sys.argv[1]))
+PY
+)"
+cleanroom_image="${image_name}:task_cleanroom"
+
+mkdir -p "$repo_root/$run_dir/prompts" "$repo_root/$run_dir/events" "$repo_root/$run_dir/finals" \
+  "$repo_root/$run_dir/accounting" \
+  "$repo_root/$run_dir/workspaces" "$instance_out"
+rm -rf "$workspace"
+
+RUN_JSON="$repo_root/$run_dir/run.json" RUN_ID="$(basename "$run_dir")" MODEL="$model" \
+  REASONING_EFFORT="$reasoning_effort" WALL_CLOCK_LIMIT_SECONDS="$wall_clock_seconds" \
+  SOLVER_EGRESS_MODE="$solver_egress_mode" \
+  SOLVER_EGRESS_GUARD="$solver_egress_guard" \
+  SOLVER_EGRESS_GUARD_ACTIVE="${PROGRAMBENCH_SOLVER_EGRESS_GUARD_ACTIVE:-}" python3 - <<'PY'
+import json
+import os
+from datetime import datetime, timezone
+from pathlib import Path
+
+path = Path(os.environ["RUN_JSON"])
+if path.exists():
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        data = {}
+else:
+    data = {}
+data.setdefault("run_id", os.environ["RUN_ID"])
+data.setdefault("created_at", datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"))
+data.setdefault("agent", "codex-cli")
+data["model"] = os.environ["MODEL"]
+data["reasoning_effort"] = os.environ["REASONING_EFFORT"]
+data["harness_mode"] = "black-box"
+data["validator_access"] = "none"
+data["solver_network"] = os.environ["SOLVER_EGRESS_MODE"]
+data["solver_egress_guard"] = os.environ["SOLVER_EGRESS_GUARD"]
+data["solver_egress_guard_active"] = (
+    os.environ["SOLVER_EGRESS_GUARD_ACTIVE"] == "1"
+    or os.environ["SOLVER_EGRESS_GUARD"] == "codex-workspace-write-filesystem-oracle"
+)
+data["wall_clock_limit_seconds"] = int(os.environ["WALL_CLOCK_LIMIT_SECONDS"])
+data.setdefault("docker_backend", "colima")
+data.setdefault("docker_platform", "linux/amd64")
+data.setdefault("notes", "Black-box ProgramBench task run with reference-query access.")
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+PY
+
+"$docker_wrapper" pull "$cleanroom_image"
+cid="$("$docker_wrapper" create --platform linux/amd64 "$cleanroom_image" sleep 2h)"
+trap '"$docker_wrapper" rm -f "$cid" >/dev/null 2>&1 || true' EXIT
+"$docker_wrapper" cp "$cid:/workspace" "$workspace"
+"$docker_wrapper" rm -f "$cid" >/dev/null
+trap - EXIT
+rm -rf "$oracle_root"
+mkdir -p "$oracle_root/requests" "$oracle_root/responses"
+
+cat > "$workspace/query-reference.sh" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+workspace="\$(cd "\$(dirname "\$0")" && pwd)"
+exec python3 "\$workspace/.programbench-oracle-client.py" reference "\$@"
+EOF
+chmod +x "$workspace/query-reference.sh"
+
+cat > "$workspace/.programbench-oracle-client.py" <<PY
+import base64
+import json
+import os
+import sys
+import time
+import uuid
+from pathlib import Path
+
+root = Path("$oracle_root")
+requests = root / "requests"
+responses = root / "responses"
+timeout = float(os.environ.get("PROGRAMBENCH_ORACLE_CLIENT_TIMEOUT_SECONDS", "600"))
+request_id = uuid.uuid4().hex
+payload = {
+    "id": request_id,
+    "kind": sys.argv[1],
+    "args": sys.argv[2:],
+    "stdin_b64": base64.b64encode(sys.stdin.buffer.read()).decode(),
+}
+tmp = requests / f".{request_id}.tmp"
+dst = requests / f"{request_id}.json"
+tmp.write_text(json.dumps(payload) + "\n")
+tmp.rename(dst)
+response_path = responses / f"{request_id}.json"
+deadline = time.monotonic() + timeout
+while time.monotonic() < deadline:
+    if response_path.exists():
+        response = json.loads(response_path.read_text())
+        sys.stdout.buffer.write(base64.b64decode(response.get("stdout_b64", "")))
+        sys.stderr.buffer.write(base64.b64decode(response.get("stderr_b64", "")))
+        raise SystemExit(int(response.get("exit_code", 1)))
+    time.sleep(0.05)
+print(f"oracle request timed out after {timeout:.0f}s", file=sys.stderr)
+raise SystemExit(124)
+PY
+
+cat > "$prompt" <<EOF
+You are attempting a real ProgramBench black-box reverse-engineering task.
+
+Instance: $instance_id
+
+You are in a cleanroom workspace extracted from the task image. Read any local
+docs, examples, source-adjacent files, and fixtures you can find. The original
+binary is not available directly, but ./query-reference.sh invokes it inside an
+offline Docker container with --network none. Use it to probe behavior.
+
+Goal:
+- Implement a replacement program for the documented command-line tool.
+- Create ./compile.sh.
+- ./compile.sh must produce ./executable in the workspace.
+- Prefer simple, dependable implementations over broad rewrites. Python stdlib
+  is acceptable if it matches the behavior.
+- Do not include or depend on query-reference.sh, docker-colima-local, copied
+  reference binaries, Docker, network access, or any file outside the submitted
+  source tree.
+- Treat the solver environment as internet-blocked except for Codex model
+  traffic; do not try to fetch source, packages, or web pages.
+- Timebox exploration. Aim for a useful benchmark submission rather than a
+  perfect clone.
+
+Before finishing, run ./compile.sh and compare ./executable against
+./query-reference.sh on representative cases.
+EOF
+
+started_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+started_s="$(python3 - <<'PY'
+import time
+print(time.time())
+PY
+)"
+
+set +e
+CODEX_BIN="$codex_bin" MODEL="$model" REASONING_EFFORT="$reasoning_effort" \
+  WORKSPACE="$workspace" PROMPT="$prompt" FINAL="$final" EVENTS="$events" \
+  WALL_CLOCK_SECONDS="$wall_clock_seconds" SOLVER_EGRESS_MODE="$solver_egress_mode" \
+  SOLVER_EGRESS_GUARD="$solver_egress_guard" \
+  SOLVER_EGRESS_GUARD_ACTIVE="${PROGRAMBENCH_SOLVER_EGRESS_GUARD_ACTIVE:-}" \
+  CLEANROOM_IMAGE="$cleanroom_image" DOCKER_WRAPPER="$docker_wrapper" \
+  ORACLE_ROOT="$oracle_root" python3 - <<'PY'
+import os
+import selectors
+import signal
+import base64
+import json
+import subprocess
+import sys
+import threading
+import time
+from pathlib import Path
+
+workspace = Path(os.environ["WORKSPACE"])
+oracle_root = Path(os.environ["ORACLE_ROOT"])
+request_dir = oracle_root / "requests"
+response_dir = oracle_root / "responses"
+stop_oracle = threading.Event()
+
+
+def write_response(request_id: str, exit_code: int, stdout: bytes, stderr: bytes) -> None:
+    payload = {
+        "exit_code": exit_code,
+        "stdout_b64": base64.b64encode(stdout).decode(),
+        "stderr_b64": base64.b64encode(stderr).decode(),
+    }
+    tmp = response_dir / f".{request_id}.tmp"
+    dst = response_dir / f"{request_id}.json"
+    tmp.write_text(json.dumps(payload) + "\n")
+    tmp.rename(dst)
+
+
+def handle_request(path: Path) -> None:
+    try:
+        request = json.loads(path.read_text())
+        request_id = request["id"]
+        kind = request.get("kind")
+        if kind != "reference":
+            write_response(request_id, 2, b"", f"unknown oracle request kind: {kind}\n".encode())
+            return
+        cmd = [
+            os.environ["DOCKER_WRAPPER"],
+            "run",
+            "--rm",
+            "-i",
+            "--network",
+            "none",
+            "--platform",
+            "linux/amd64",
+            os.environ["CLEANROOM_IMAGE"],
+            "/workspace/executable",
+            *[str(arg) for arg in request.get("args", [])],
+        ]
+        proc = subprocess.run(
+            cmd,
+            input=base64.b64decode(request.get("stdin_b64", "")),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=int(os.environ.get("PROGRAMBENCH_REFERENCE_TIMEOUT_SECONDS", "120")),
+        )
+        write_response(request_id, proc.returncode, proc.stdout, proc.stderr)
+    except Exception as exc:
+        request_id = path.stem
+        try:
+            request_id = json.loads(path.read_text()).get("id", request_id)
+        except Exception:
+            pass
+        write_response(str(request_id), 1, b"", f"oracle broker error: {exc}\n".encode())
+    finally:
+        path.unlink(missing_ok=True)
+
+
+def oracle_loop() -> None:
+    while not stop_oracle.is_set():
+        for path in sorted(request_dir.glob("*.json")):
+            processing = path.with_suffix(".processing")
+            try:
+                path.rename(processing)
+            except FileNotFoundError:
+                continue
+            handle_request(processing)
+        time.sleep(0.05)
+
+
+oracle_thread = threading.Thread(target=oracle_loop, name="programbench-oracle", daemon=True)
+oracle_thread.start()
+
+codex_sandbox = "danger-full-access" if os.environ["SOLVER_EGRESS_MODE"] in {"off", "unguarded"} else "workspace-write"
+cmd = [
+    os.environ["CODEX_BIN"],
+    "exec",
+    "--ignore-user-config",
+    "--ignore-rules",
+    "-m",
+    os.environ["MODEL"],
+    "-c",
+    f'model_reasoning_effort="{os.environ["REASONING_EFFORT"]}"',
+    "--cd",
+    os.environ["WORKSPACE"],
+    "--sandbox",
+    codex_sandbox,
+    "-c",
+    'approval_policy="never"',
+    "--ephemeral",
+    "--json",
+    "--color",
+    "never",
+    "--skip-git-repo-check",
+    "--output-last-message",
+    os.environ["FINAL"],
+]
+timeout = int(os.environ["WALL_CLOCK_SECONDS"])
+events = Path(os.environ["EVENTS"])
+events.parent.mkdir(parents=True, exist_ok=True)
+with open(os.environ["PROMPT"], "rb") as stdin, events.open("wb") as event_file:
+    proc = subprocess.Popen(
+        cmd,
+        stdin=stdin,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+    )
+    start = time.monotonic()
+    assert proc.stdout is not None
+    selector = selectors.DefaultSelector()
+    selector.register(proc.stdout, selectors.EVENT_READ)
+    timed_out = False
+    try:
+        while True:
+            if time.monotonic() - start > timeout:
+                timed_out = True
+                os.killpg(proc.pid, signal.SIGTERM)
+                try:
+                    proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                    proc.wait()
+                break
+            for key, _ in selector.select(timeout=0.2):
+                chunk = key.fileobj.readline()
+                if chunk:
+                    sys.stdout.buffer.write(chunk)
+                    sys.stdout.buffer.flush()
+                    event_file.write(chunk)
+                    event_file.flush()
+                    continue
+            if proc.poll() is not None:
+                for chunk in proc.stdout.readlines():
+                    sys.stdout.buffer.write(chunk)
+                    event_file.write(chunk)
+                sys.stdout.buffer.flush()
+                event_file.flush()
+                break
+    finally:
+        selector.close()
+        proc.stdout.close()
+    rc = proc.returncode if proc.returncode is not None else proc.wait()
+    stop_oracle.set()
+    oracle_thread.join(timeout=2)
+    if timed_out:
+        sys.exit(124)
+    sys.exit(rc)
+PY
+codex_status="$?"
+set -e
+
+ended_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+ended_s="$(python3 - <<'PY'
+import time
+print(time.time())
+PY
+)"
+ACCOUNTING_PATH="$accounting" STARTED_AT="$started_at" ENDED_AT="$ended_at" \
+  STARTED_S="$started_s" ENDED_S="$ended_s" CODEX_STATUS="$codex_status" \
+  MODEL="$model" REASONING_EFFORT="$reasoning_effort" INSTANCE_ID="$instance_id" \
+  SOLVER_EGRESS_MODE="$solver_egress_mode" \
+  SOLVER_EGRESS_GUARD="$solver_egress_guard" \
+  SOLVER_EGRESS_GUARD_ACTIVE="${PROGRAMBENCH_SOLVER_EGRESS_GUARD_ACTIVE:-}" \
+  HARNESS_MODE="black-box" WALL_CLOCK_LIMIT_SECONDS="$wall_clock_seconds" python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+started = float(os.environ["STARTED_S"])
+ended = float(os.environ["ENDED_S"])
+payload = {
+    "instance_id": os.environ["INSTANCE_ID"],
+    "model": os.environ["MODEL"],
+    "reasoning_effort": os.environ["REASONING_EFFORT"],
+    "harness_mode": os.environ["HARNESS_MODE"],
+    "started_at": os.environ["STARTED_AT"],
+    "ended_at": os.environ["ENDED_AT"],
+    "wall_time_seconds": max(0.0, ended - started),
+    "wall_clock_limit_seconds": int(os.environ["WALL_CLOCK_LIMIT_SECONDS"]),
+    "codex_exit_code": int(os.environ["CODEX_STATUS"]),
+    "solver_network": os.environ["SOLVER_EGRESS_MODE"],
+    "solver_egress_guard": os.environ["SOLVER_EGRESS_GUARD"],
+    "solver_egress_guard_active": (
+        os.environ["SOLVER_EGRESS_GUARD_ACTIVE"] == "1"
+        or os.environ["SOLVER_EGRESS_GUARD"] == "codex-workspace-write-filesystem-oracle"
+    ),
+}
+path = Path(os.environ["ACCOUNTING_PATH"])
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+PY
+
+if [[ "$codex_status" -ne 0 && "$codex_status" -ne 124 ]]; then
+  exit "$codex_status"
+fi
+
+SUBMISSION_SRC="$workspace" SUBMISSION_TAR="$instance_out/submission.tar.gz" python3 - <<'PY'
+import os
+import tarfile
+from pathlib import Path
+
+src = Path(os.environ["SUBMISSION_SRC"])
+dst = Path(os.environ["SUBMISSION_TAR"])
+exclude_names = {"query-reference.sh", "docker-colima-local", "executable", ".programbench-oracle-client.py"}
+exclude_roots = {"reference", ".git", "__pycache__", ".programbench-oracle", ".pbtmp"}
+dst.parent.mkdir(parents=True, exist_ok=True)
+with tarfile.open(dst, "w:gz") as tf:
+    for path in sorted(src.rglob("*")):
+        rel = path.relative_to(src)
+        if rel.parts[0] in exclude_roots or rel.name in exclude_names:
+            continue
+        info = tf.gettarinfo(str(path), arcname=str(rel))
+        info.uid = info.gid = 0
+        info.uname = info.gname = "root"
+        if path.is_file():
+            with path.open("rb") as f:
+                tf.addfile(info, f)
+        else:
+            tf.addfile(info)
+print(dst)
+PY

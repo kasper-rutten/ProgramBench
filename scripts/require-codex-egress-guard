@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+mode="${1:-${PROGRAMBENCH_SOLVER_EGRESS_MODE:-openai-only}}"
+guard="${PROGRAMBENCH_SOLVER_EGRESS_GUARD:-}"
+
+case "$mode" in
+  openai-only)
+    ;;
+  off|unguarded)
+    if [[ "${PROGRAMBENCH_ALLOW_UNGUARDED_SOLVER:-}" == "1" ]]; then
+      echo "solver egress guard disabled by PROGRAMBENCH_ALLOW_UNGUARDED_SOLVER=1" >&2
+      exit 0
+    fi
+    cat >&2 <<'MSG'
+Refusing to run with solver egress disabled.
+
+Set PROGRAMBENCH_SOLVER_EGRESS_MODE=openai-only and activate a host/container
+egress guard, or set PROGRAMBENCH_ALLOW_UNGUARDED_SOLVER=1 for a deliberately
+contaminable local debug run.
+MSG
+    exit 2
+    ;;
+  *)
+    echo "Unknown PROGRAMBENCH_SOLVER_EGRESS_MODE: $mode" >&2
+    echo "Expected: openai-only, off" >&2
+    exit 2
+    ;;
+esac
+
+if [[ "$mode" == "openai-only" && "$guard" == "codex-workspace-write-filesystem-oracle" ]]; then
+  exit 0
+fi
+
+if [[ "${PROGRAMBENCH_SOLVER_EGRESS_GUARD_ACTIVE:-}" == "1" ]]; then
+  exit 0
+fi
+
+if [[ -n "${PROGRAMBENCH_SOLVER_EGRESS_GUARD_ACTIVE:-}" ]]; then
+  echo "PROGRAMBENCH_SOLVER_EGRESS_GUARD_ACTIVE must be exactly 1 when set." >&2
+  exit 2
+fi
+
+cat >&2 <<'MSG'
+Refusing to launch Codex without an active solver egress guard.
+
+ProgramBench requires the agent to have no internet access during inference.
+This harness defaults to openai-only solver egress: Codex may talk to OpenAI,
+but subprocesses must not be able to fetch source, packages, or web pages.
+
+Before running, activate an external guard and export:
+
+  PROGRAMBENCH_SOLVER_EGRESS_GUARD_ACTIVE=1
+
+The guard can be a dedicated-user firewall rule, a network-restricted container,
+or another host policy that allows only Codex's OpenAI traffic and local
+offline oracle/eval Docker calls.
+
+The repo-local default guard is:
+
+  PROGRAMBENCH_SOLVER_EGRESS_GUARD=codex-workspace-write-filesystem-oracle
+
+That runs Codex shell commands under workspace-write network denial and exposes
+the reference/validator through a filesystem broker instead of the Docker socket.
+
+For intentionally non-faithful local debugging only:
+
+  PROGRAMBENCH_SOLVER_EGRESS_MODE=off PROGRAMBENCH_ALLOW_UNGUARDED_SOLVER=1
+MSG
+exit 2

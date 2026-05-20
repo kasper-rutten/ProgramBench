@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+instance_id="testorg__calculator.abc1234"
+image_ref="programbench/testorg_1776_calculator.abc1234:task"
+run_dir="$repo_root/runs/calculator-gold"
+blob_dir="$repo_root/.programbench-blobs"
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "$tmp_dir"' EXIT
+export TMPDIR_UNPACK="$tmp_dir/submission"
+
+"$repo_root/scripts/prepare-colima-docker-config" >/dev/null
+
+rm -rf "$run_dir/$instance_id" "$blob_dir/$instance_id"
+mkdir -p "$run_dir/$instance_id" "$blob_dir/$instance_id/tests"
+
+python3 - <<'PY'
+from pathlib import Path
+import zipfile
+
+repo = Path.cwd()
+src = repo / "src/programbench/data/test_runs/correct/testorg__calculator.abc1234/submission.zip"
+dst = Path(__import__("os").environ["TMPDIR_UNPACK"])
+dst.mkdir(parents=True, exist_ok=True)
+with zipfile.ZipFile(src) as zf:
+    zf.extractall(dst)
+PY
+
+SUBMISSION_SRC="$tmp_dir/submission" SUBMISSION_TAR="$run_dir/$instance_id/submission.tar.gz" python3 - <<'PY'
+from pathlib import Path
+import os
+import tarfile
+
+src = Path(os.environ["SUBMISSION_SRC"])
+dst = Path(os.environ["SUBMISSION_TAR"])
+with tarfile.open(dst, "w:gz") as tf:
+    for path in sorted(src.rglob("*")):
+        arcname = path.relative_to(src)
+        info = tf.gettarinfo(str(path), arcname=str(arcname))
+        info.uid = info.gid = 0
+        info.uname = info.gname = "root"
+        if path.is_file():
+            with path.open("rb") as f:
+                tf.addfile(info, f)
+        else:
+            tf.addfile(info)
+PY
+tar -C "src/programbench/data/tasks/$instance_id/tests/33128f6b8600" \
+  -czf "$blob_dir/$instance_id/tests/33128f6b8600.tar.gz" .
+
+cat >"$tmp_dir/Dockerfile" <<'DOCKERFILE'
+FROM ubuntu:22.04
+RUN apt-get update \
+  && apt-get install -y git python3 python3-pip \
+  && pip3 install pytest pytest-xdist \
+  && rm -rf /var/lib/apt/lists/*
+WORKDIR /workspace
+DOCKERFILE
+
+"$repo_root/scripts/docker-colima" build \
+  --platform linux/amd64 \
+  -t "$image_ref" \
+  "$tmp_dir"
+
+PROGRAMBENCH_DOCKER_EXECUTABLE="$repo_root/scripts/docker-colima" \
+PROGRAMBENCH_BLOB_DIR="$blob_dir" \
+uv run programbench eval "$run_dir" --filter "$instance_id" --force --docker-cpus 2
+
+test -f "$run_dir/$instance_id/$instance_id.eval.json"
+uv run programbench info "$run_dir"
+
+EVAL_JSON="$run_dir/$instance_id/$instance_id.eval.json" python3 - <<'PY'
+import json
+import os
+
+with open(os.environ["EVAL_JSON"]) as f:
+    data = json.load(f)
+
+if data.get("error_code"):
+    raise SystemExit(f"top-level evaluation error: {data['error_code']}")
+if data.get("test_branch_errors"):
+    raise SystemExit(f"branch evaluation errors: {data['test_branch_errors']}")
+if not any(entry.get("step") == "results_read" for entry in data.get("log", [])):
+    raise SystemExit("evaluation did not read JUnit results")
+PY

@@ -174,3 +174,11 @@ poetry.toml
 pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python
+
+# Local ProgramBench/Codex reproduction artifacts
+.docker-colima/
+.docker-colima-ghcr/
+.programbench-blobs/
+runs/
+reports/
+research/

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export DOCKER_CONFIG="${PROGRAMBENCH_DOCKER_CONFIG:-$repo_root/.docker-colima}"
+export DOCKER_HOST="${PROGRAMBENCH_DOCKER_HOST:-unix://$HOME/.colima/default/docker.sock}"
+export DOCKER_DEFAULT_PLATFORM="${DOCKER_DEFAULT_PLATFORM:-linux/amd64}"
+unset DOCKER_CONTEXT
+
+if [[ ! -f "$DOCKER_CONFIG/config.json" ]]; then
+  "$repo_root/scripts/prepare-colima-docker-config" >/dev/null
+fi
+
+exec docker "$@"

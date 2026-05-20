@@ -168,6 +168,11 @@ RUN_JSON="$repo_root/$run_dir/run.json" RUN_ID="$(basename "$run_dir")" MODEL="$
   SIMULATED_COST_MAX_TURNS="$same_cost_max_turns" \
   SOLVER_EGRESS_MODE="$solver_egress_mode" \
   SOLVER_EGRESS_GUARD="$solver_egress_guard" \
+  PROGRAMBENCH_EXPERIMENT_NAME="${PROGRAMBENCH_EXPERIMENT_NAME:-}" \
+  PROGRAMBENCH_EXPERIMENT_DESCRIPTION="${PROGRAMBENCH_EXPERIMENT_DESCRIPTION:-}" \
+  PROGRAMBENCH_EXPERIMENT_TAGS="${PROGRAMBENCH_EXPERIMENT_TAGS:-}" \
+  PROGRAMBENCH_EXPERIMENT_FACTORS="${PROGRAMBENCH_EXPERIMENT_FACTORS:-}" \
+  PROGRAMBENCH_SYSTEM_PROMPT_LABEL="${PROGRAMBENCH_SYSTEM_PROMPT_LABEL:-}" \
   SOLVER_EGRESS_GUARD_ACTIVE="${PROGRAMBENCH_SOLVER_EGRESS_GUARD_ACTIVE:-}" python3 - <<'PY'
 import json
 import os
@@ -189,6 +194,28 @@ data["model"] = os.environ["MODEL"]
 data["reasoning_effort"] = os.environ["REASONING_EFFORT"]
 data["harness_mode"] = "validator-visible"
 data["validator_access"] = "full-eval-output"
+experiment = data.get("experiment") if isinstance(data.get("experiment"), dict) else {}
+if os.environ["PROGRAMBENCH_EXPERIMENT_NAME"]:
+    experiment["name"] = os.environ["PROGRAMBENCH_EXPERIMENT_NAME"]
+if os.environ["PROGRAMBENCH_EXPERIMENT_DESCRIPTION"]:
+    experiment["description"] = os.environ["PROGRAMBENCH_EXPERIMENT_DESCRIPTION"]
+if os.environ["PROGRAMBENCH_EXPERIMENT_TAGS"]:
+    experiment["tags"] = [tag.strip() for tag in os.environ["PROGRAMBENCH_EXPERIMENT_TAGS"].split(",") if tag.strip()]
+factors = experiment.get("factors") if isinstance(experiment.get("factors"), dict) else {}
+if os.environ["PROGRAMBENCH_EXPERIMENT_FACTORS"]:
+    try:
+        factors.update(json.loads(os.environ["PROGRAMBENCH_EXPERIMENT_FACTORS"]))
+    except json.JSONDecodeError:
+        factors["custom"] = os.environ["PROGRAMBENCH_EXPERIMENT_FACTORS"]
+factors.setdefault("model", os.environ["MODEL"])
+factors.setdefault("reasoning_effort", os.environ["REASONING_EFFORT"])
+factors.setdefault("harness_mode", data["harness_mode"])
+factors.setdefault("validator_access", data["validator_access"])
+if os.environ["PROGRAMBENCH_SYSTEM_PROMPT_LABEL"]:
+    factors.setdefault("system_prompt", os.environ["PROGRAMBENCH_SYSTEM_PROMPT_LABEL"])
+experiment["factors"] = {str(k): str(v) for k, v in sorted(factors.items())}
+if experiment.get("name") or experiment.get("description") or experiment.get("tags") or experiment.get("factors"):
+    data["experiment"] = experiment
 data["solver_network"] = os.environ["SOLVER_EGRESS_MODE"]
 data["solver_egress_guard"] = os.environ["SOLVER_EGRESS_GUARD"]
 data["solver_egress_guard_active"] = (
@@ -206,6 +233,8 @@ data["eval_docker_cpus"] = int(os.environ["EVAL_DOCKER_CPUS"])
 data["same_cost_mode"] = os.environ["SAME_COST_MODE"] == "1"
 if data["same_cost_mode"]:
     data["harness_mode"] = "validator-visible-same-cost"
+    if "experiment" in data:
+        data["experiment"].setdefault("factors", {})["harness_mode"] = data["harness_mode"]
     data["simulated_cost_limit"] = float(os.environ["SIMULATED_COST_LIMIT"])
     data["simulated_cost_unit"] = os.environ["SIMULATED_COST_UNIT"]
     data["simulated_cost_rate_card"] = os.environ["SIMULATED_COST_RATE_CARD"]
@@ -592,6 +621,13 @@ Same-cost controller:
   once, then stop and summarize the current validator result.
 - The harness will resume you automatically when another iteration is available.
 EOF
+fi
+
+if [[ -n "${PROGRAMBENCH_SYSTEM_PROMPT_APPEND:-}" ]]; then
+  {
+    printf '\nExperiment-specific solver instructions:\n'
+    printf '%s\n' "$PROGRAMBENCH_SYSTEM_PROMPT_APPEND"
+  } >> "$prompt"
 fi
 
 started_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"

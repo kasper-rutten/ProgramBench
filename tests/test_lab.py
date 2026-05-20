@@ -90,6 +90,12 @@ def test_summarize_run_with_manifest_and_eval_json(tmp_path):
         json.dumps(
             {
                 "run_id": "demo",
+                "experiment": {
+                    "name": "Prompt ablation",
+                    "description": "Compare baseline prompt against an iterative validator prompt.",
+                    "tags": ["prompt", "validator"],
+                    "factors": {"system_prompt": "iterative"},
+                },
                 "agent": "codex-cli",
                 "model": "gpt-test",
                 "reasoning_effort": "high",
@@ -108,6 +114,11 @@ def test_summarize_run_with_manifest_and_eval_json(tmp_path):
     summary = summarize_run(run, repo_root=tmp_path, instances_by_id={})
 
     assert summary.run_id == "demo"
+    assert summary.experiment.name == "Prompt ablation"
+    assert summary.experiment.description == "Compare baseline prompt against an iterative validator prompt."
+    assert summary.experiment.tags == ["prompt", "validator"]
+    assert summary.experiment.factors["system_prompt"] == "iterative"
+    assert summary.experiment.factors["model"] == "gpt-test"
     assert summary.model == "gpt-test"
     assert summary.reasoning_effort == "high"
     assert summary.submitted_instances == 1
@@ -133,6 +144,54 @@ def test_build_index_and_render_report(tmp_path):
     html = render_html_report(index)
 
     assert index["total_runs"] == 1
+    assert index["total_experiments"] == 1
     assert index["runs"][0]["run_id"] == "demo"
+    assert index["experiments"][0]["name"] == "demo"
     assert "ProgramBench Lab Report" in html
+    assert "Experiments" in html
     assert "fake__task.abc1234" in html
+
+
+def test_build_index_groups_runs_by_experiment(tmp_path):
+    for run_name, passed in [("low", True), ("high", False)]:
+        run = tmp_path / "runs" / run_name
+        inst = run / "fake__task.abc1234"
+        inst.mkdir(parents=True)
+        (run / "run.json").write_text(
+            json.dumps(
+                {
+                    "run_id": run_name,
+                    "experiment": {
+                        "name": "Reasoning sweep",
+                        "description": "Compare reasoning effort at fixed harness.",
+                        "tags": ["model"],
+                        "factors": {"harness_mode": "black-box"},
+                    },
+                    "model": "gpt-test",
+                    "reasoning_effort": run_name,
+                }
+            )
+        )
+        result = EvaluationResult(
+            test_results=[
+                TestResult(
+                    name="test_case",
+                    branch="b1",
+                    status="passed" if passed else "failure",
+                    extra={},
+                )
+            ],
+            test_branches=["b1"],
+        )
+        (inst / "fake__task.abc1234.eval.json").write_text(result.model_dump_json())
+
+    index = build_index(tmp_path / "runs", repo_root=tmp_path)
+
+    assert index["total_experiments"] == 1
+    experiment = index["experiments"][0]
+    assert experiment["name"] == "Reasoning sweep"
+    assert experiment["run_count"] == 2
+    assert experiment["evaluated_runs"] == 2
+    assert experiment["total_resolved"] == 1
+    assert experiment["total_tests"] == 2
+    assert experiment["factors"]["reasoning_effort"] == "high, low"

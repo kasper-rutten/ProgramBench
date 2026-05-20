@@ -69,6 +69,7 @@ def summary(
     """Print a compact run table."""
     data = build_index(runs_root, repo_root=Path.cwd())
     table = Table(title="ProgramBench Local Runs", show_lines=False)
+    table.add_column("Experiment")
     table.add_column("Run", style="bold")
     table.add_column("Model")
     table.add_column("Reasoning")
@@ -82,7 +83,9 @@ def summary(
     table.add_column("Created")
     for run in data["runs"]:
         accounting = run.get("accounting") or {}
+        experiment = run.get("experiment") or {}
         table.add_row(
+            experiment.get("name") or run.get("label") or run["run_id"],
             run["run_id"],
             run.get("model") or "",
             run.get("reasoning_effort") or "",

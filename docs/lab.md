@@ -16,6 +16,16 @@ Add a `run.json` file to each run directory when you know the harness details:
 {
   "run_id": "codex-5.5-high-smoke",
   "created_at": "2026-05-13T15:00:00+00:00",
+  "experiment": {
+    "name": "Validator feedback ablation",
+    "description": "Compare the same model and task with and without official validator output at test time.",
+    "tags": ["gron", "validator-visible"],
+    "factors": {
+      "model": "gpt-5.5",
+      "harness_mode": "validator-visible",
+      "system_prompt": "iterate-until-validator-pass"
+    }
+  },
   "agent": "codex-cli",
   "model": "gpt-5.5",
   "reasoning_effort": "high",
@@ -28,6 +38,27 @@ Add a `run.json` file to each run directory when you know the harness details:
 
 The lab can still infer runs without this file, but model and harness fields
 are much better when the manifest is present.
+
+Experiments are first-class in the index and HTML report. A single experiment
+can contain many runs that vary model, reasoning effort, harness access,
+validator budget, or solver instructions. Agents can stamp new runs without a
+UI by writing the `experiment` object above into `run.json`, or by setting
+these environment variables when using the Codex helper scripts:
+
+```bash
+PROGRAMBENCH_EXPERIMENT_NAME="Validator feedback ablation" \
+PROGRAMBENCH_EXPERIMENT_DESCRIPTION="Same task/model matrix with and without validator access." \
+PROGRAMBENCH_EXPERIMENT_TAGS="gron,validator-visible" \
+PROGRAMBENCH_EXPERIMENT_FACTORS='{"system_prompt":"iterate-until-validator-pass"}' \
+PROGRAMBENCH_SYSTEM_PROMPT_LABEL="iterate-until-validator-pass" \
+scripts/run-codex-validator-task tomnomnom__gron.88a6234 \
+  runs/gron-validator-5.5-high gpt-5.5 high 3600 5
+```
+
+Use `PROGRAMBENCH_SYSTEM_PROMPT_APPEND` for experimental instruction deltas that
+should be appended to the generated solver prompt. This is intentionally a low
+ceremony hook for agent-driven experiments rather than a first-class prompt
+editor.
 
 ## Accounting
 

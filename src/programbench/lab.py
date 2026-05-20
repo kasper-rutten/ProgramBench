@@ -73,6 +73,15 @@ class AccountingSummary(BaseModel):
     selected_validator_call_count: int | None = None
 
 
+class ExperimentSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = None
+    description: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    factors: dict[str, str] = Field(default_factory=dict)
+
+
 class InstanceLabSummary(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -104,6 +113,7 @@ class RunLabSummary(BaseModel):
     run_id: str
     run_dir: str
     created_at: str | None = None
+    experiment: ExperimentSummary = Field(default_factory=ExperimentSummary)
     label: str | None = None
     agent: str | None = None
     model: str | None = None
@@ -133,6 +143,27 @@ class RunLabSummary(BaseModel):
     instances: list[InstanceLabSummary] = Field(default_factory=list)
 
 
+class ExperimentLabSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    description: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    factors: dict[str, str] = Field(default_factory=dict)
+    run_count: int = 0
+    evaluated_runs: int = 0
+    submitted_instances: int = 0
+    evaluated_instances: int = 0
+    average_score: float = 0.0
+    average_score_percent: float = 0.0
+    total_resolved: int = 0
+    total_tests: int = 0
+    total_failures: int = 0
+    total_errors: int = 0
+    accounting: AccountingSummary = Field(default_factory=AccountingSummary)
+    run_ids: list[str] = Field(default_factory=list)
+
+
 def _rel(path: Path, base: Path) -> str:
     try:
         return str(path.resolve().relative_to(base.resolve()))
@@ -148,6 +179,46 @@ def _read_json(path: Path) -> dict[str, Any]:
     except json.JSONDecodeError:
         return {}
     return data if isinstance(data, dict) else {}
+
+
+def _string_list(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(item) for item in value if str(item)]
+    if isinstance(value, str):
+        return [item.strip() for item in value.split(",") if item.strip()]
+    return []
+
+
+def _string_dict(value: Any) -> dict[str, str]:
+    if not isinstance(value, dict):
+        return {}
+    return {str(k): str(v) for k, v in value.items() if v is not None and str(v) != ""}
+
+
+def _manifest_experiment(manifest: dict[str, Any]) -> ExperimentSummary:
+    raw = manifest.get("experiment")
+    raw = raw if isinstance(raw, dict) else {}
+    name = raw.get("name") or manifest.get("experiment_name") or manifest.get("label")
+    description = raw.get("description") or manifest.get("experiment_description")
+    tags = _string_list(raw.get("tags")) or _string_list(manifest.get("experiment_tags"))
+    factors = _string_dict(raw.get("factors")) | _string_dict(manifest.get("experiment_factors"))
+    for key in [
+        "model",
+        "reasoning_effort",
+        "harness_mode",
+        "validator_access",
+        "agent",
+        "solver_network",
+    ]:
+        value = manifest.get(key)
+        if isinstance(value, str) and value:
+            factors.setdefault(key, value)
+    return ExperimentSummary(
+        name=str(name) if name else None,
+        description=str(description) if description else None,
+        tags=tags,
+        factors=dict(sorted(factors.items())),
+    )
 
 
 def _event_accounting(
@@ -408,7 +479,7 @@ def summarize_eval_json(
                 "name": t.name,
                 "branch": t.branch,
                 "status": t.status,
-                "message": message.splitlines()[0][:240],
+                "message": (message.splitlines() or [""])[0][:240],
             }
         )
         if len(top_failures) >= 8:
@@ -519,6 +590,7 @@ def summarize_run(
         run_id=str(manifest.get("run_id") or run_dir.name),
         run_dir=_rel(run_dir, repo_root),
         created_at=str(created_at) if created_at else None,
+        experiment=_manifest_experiment(manifest),
         label=manifest.get("label"),
         agent=manifest.get("agent"),
         model=manifest.get("model"),
@@ -551,6 +623,49 @@ def summarize_run(
     )
 
 
+def _experiment_key(run: RunLabSummary) -> str:
+    return run.experiment.name or run.label or run.run_id
+
+
+def summarize_experiments(runs: Iterable[RunLabSummary]) -> list[ExperimentLabSummary]:
+    groups: dict[str, list[RunLabSummary]] = {}
+    for run in runs:
+        groups.setdefault(_experiment_key(run), []).append(run)
+    experiments: list[ExperimentLabSummary] = []
+    for name, grouped_runs in groups.items():
+        scores = [run.average_score for run in grouped_runs if run.evaluated_instances]
+        descriptions = [
+            run.experiment.description for run in grouped_runs if run.experiment.description
+        ]
+        tags = sorted({tag for run in grouped_runs for tag in run.experiment.tags})
+        factors: dict[str, set[str]] = {}
+        for run in grouped_runs:
+            for key, value in run.experiment.factors.items():
+                factors.setdefault(key, set()).add(value)
+        experiments.append(
+            ExperimentLabSummary(
+                name=name,
+                description=descriptions[0] if descriptions else None,
+                tags=tags,
+                factors={key: ", ".join(sorted(values)) for key, values in sorted(factors.items())},
+                run_count=len(grouped_runs),
+                evaluated_runs=sum(1 for run in grouped_runs if run.evaluated_instances),
+                submitted_instances=sum(run.submitted_instances for run in grouped_runs),
+                evaluated_instances=sum(run.evaluated_instances for run in grouped_runs),
+                average_score=statistics.fmean(scores) if scores else 0.0,
+                average_score_percent=(statistics.fmean(scores) * 100) if scores else 0.0,
+                total_resolved=sum(run.total_resolved for run in grouped_runs),
+                total_tests=sum(run.total_tests for run in grouped_runs),
+                total_failures=sum(run.total_failures for run in grouped_runs),
+                total_errors=sum(run.total_errors for run in grouped_runs),
+                accounting=_sum_accounting(run.accounting for run in grouped_runs),
+                run_ids=[run.run_id for run in sorted(grouped_runs, key=lambda item: item.run_id)],
+            )
+        )
+    experiments.sort(key=lambda exp: (exp.average_score, exp.name), reverse=True)
+    return experiments
+
+
 def build_index(runs_root: Path, *, repo_root: Path | None = None) -> dict[str, Any]:
     repo_root = repo_root or Path.cwd()
     instances_by_id = _load_instances_by_id()
@@ -560,13 +675,16 @@ def build_index(runs_root: Path, *, repo_root: Path | None = None) -> dict[str, 
     ]
     runs.sort(key=lambda r: (r.created_at or "", r.run_id), reverse=True)
     scores = [r.average_score for r in runs if r.evaluated_instances]
+    experiments = summarize_experiments(runs)
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "runs_root": _rel(runs_root, repo_root),
         "total_runs": len(runs),
         "evaluated_runs": sum(1 for r in runs if r.evaluated_instances),
+        "total_experiments": len(experiments),
         "average_score": statistics.fmean(scores) if scores else 0.0,
         "average_score_percent": (statistics.fmean(scores) * 100) if scores else 0.0,
+        "experiments": [experiment.model_dump() for experiment in experiments],
         "runs": [r.model_dump() for r in runs],
     }
 
@@ -608,12 +726,36 @@ def _fmt_tokens(value: Any) -> str:
 
 
 def render_html_report(index: dict[str, Any]) -> str:
+    experiment_rows = []
+    for experiment in index.get("experiments", []):
+        accounting = experiment.get("accounting") or {}
+        tags = ", ".join(experiment.get("tags") or [])
+        factor_text = ", ".join(
+            f"{key}: {value}" for key, value in (experiment.get("factors") or {}).items()
+        )
+        experiment_rows.append(
+            "<tr>"
+            f"<td>{escape(str(experiment.get('name') or ''))}"
+            f"<br><span class='muted'>{escape(str(experiment.get('description') or ''))}</span></td>"
+            f"<td class='num'>{experiment.get('evaluated_runs', 0)}/{experiment.get('run_count', 0)}</td>"
+            f"<td class='num'>{_fmt_score(float(experiment.get('average_score') or 0))}</td>"
+            f"<td class='num'>{experiment.get('total_resolved', 0)}/{experiment.get('total_tests', 0)}</td>"
+            f"<td>{escape(tags)}"
+            f"<br><span class='muted'>{escape(factor_text)}</span></td>"
+            f"<td>{escape(_fmt_duration(accounting.get('wall_time_seconds')))}"
+            f"<br><span class='muted'>{accounting.get('turns', 0)} turns, "
+            f"{accounting.get('tool_calls', 0)} tools, "
+            f"{escape(_fmt_tokens(accounting.get('total_tokens')))}</span></td>"
+            "</tr>"
+        )
     rows = []
     details = []
     for run in index.get("runs", []):
         accounting = run.get("accounting") or {}
+        experiment = run.get("experiment") or {}
         rows.append(
             "<tr>"
+            f"<td>{escape(str(experiment.get('name') or run.get('label') or run['run_id']))}</td>"
             f"<td><a href='#{escape(run['run_id'])}'>{escape(run['run_id'])}</a></td>"
             f"<td>{escape(str(run.get('model') or ''))}</td>"
             f"<td>{escape(str(run.get('reasoning_effort') or ''))}</td>"
@@ -693,9 +835,17 @@ def render_html_report(index: dict[str, Any]) -> str:
                 f", {accounting.get('validator_call_count', 0)}/"
                 f"{accounting.get('validator_call_limit')} validator calls"
             )
+        tags = ", ".join(experiment.get("tags") or [])
+        factor_text = ", ".join(
+            f"{key}: {value}" for key, value in (experiment.get("factors") or {}).items()
+        )
         details.append(
             f"<section id='{escape(run['run_id'])}'>"
             f"<h2>{escape(run['run_id'])}</h2>"
+            f"<p><b>Experiment:</b> {escape(str(experiment.get('name') or run.get('label') or run['run_id']))}</p>"
+            f"<p>{escape(str(experiment.get('description') or run.get('notes') or ''))}</p>"
+            f"<p class='muted'>{escape(tags)}"
+            f"{'<br>' if tags and factor_text else ''}{escape(factor_text)}</p>"
             f"<p>{escape(str(run.get('notes') or ''))}</p>"
             f"<p><b>Harness:</b> {escape(str(run.get('harness_mode') or ''))}"
             f"{' / ' + escape(str(run.get('validator_access'))) if run.get('validator_access') else ''}</p>"
@@ -731,7 +881,12 @@ def render_html_report(index: dict[str, Any]) -> str:
         "<h1>ProgramBench Lab Report</h1>"
         f"<p class='muted'>Generated at {escape(str(index.get('generated_at', '')))} from "
         f"{escape(str(index.get('runs_root', '')))}.</p>"
-        "<table><thead><tr><th>Run</th><th>Model</th><th>Reasoning</th><th>Eval/Sub</th>"
+        "<h2>Experiments</h2>"
+        "<table><thead><tr><th>Experiment</th><th>Runs</th><th>Score</th><th>Passed</th>"
+        "<th>Factors</th><th>Accounting</th></tr></thead>"
+        f"<tbody>{''.join(experiment_rows)}</tbody></table>"
+        "<h2>Runs</h2>"
+        "<table><thead><tr><th>Experiment</th><th>Run</th><th>Model</th><th>Reasoning</th><th>Eval/Sub</th>"
         "<th>Score</th><th>Passed</th><th>Accounting</th><th>Created</th></tr></thead>"
         f"<tbody>{''.join(rows)}</tbody></table>"
         f"{''.join(details)}"

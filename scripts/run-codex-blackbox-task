@@ -57,6 +57,11 @@ RUN_JSON="$repo_root/$run_dir/run.json" RUN_ID="$(basename "$run_dir")" MODEL="$
   REASONING_EFFORT="$reasoning_effort" WALL_CLOCK_LIMIT_SECONDS="$wall_clock_seconds" \
   SOLVER_EGRESS_MODE="$solver_egress_mode" \
   SOLVER_EGRESS_GUARD="$solver_egress_guard" \
+  PROGRAMBENCH_EXPERIMENT_NAME="${PROGRAMBENCH_EXPERIMENT_NAME:-}" \
+  PROGRAMBENCH_EXPERIMENT_DESCRIPTION="${PROGRAMBENCH_EXPERIMENT_DESCRIPTION:-}" \
+  PROGRAMBENCH_EXPERIMENT_TAGS="${PROGRAMBENCH_EXPERIMENT_TAGS:-}" \
+  PROGRAMBENCH_EXPERIMENT_FACTORS="${PROGRAMBENCH_EXPERIMENT_FACTORS:-}" \
+  PROGRAMBENCH_SYSTEM_PROMPT_LABEL="${PROGRAMBENCH_SYSTEM_PROMPT_LABEL:-}" \
   SOLVER_EGRESS_GUARD_ACTIVE="${PROGRAMBENCH_SOLVER_EGRESS_GUARD_ACTIVE:-}" python3 - <<'PY'
 import json
 import os
@@ -78,6 +83,28 @@ data["model"] = os.environ["MODEL"]
 data["reasoning_effort"] = os.environ["REASONING_EFFORT"]
 data["harness_mode"] = "black-box"
 data["validator_access"] = "none"
+experiment = data.get("experiment") if isinstance(data.get("experiment"), dict) else {}
+if os.environ["PROGRAMBENCH_EXPERIMENT_NAME"]:
+    experiment["name"] = os.environ["PROGRAMBENCH_EXPERIMENT_NAME"]
+if os.environ["PROGRAMBENCH_EXPERIMENT_DESCRIPTION"]:
+    experiment["description"] = os.environ["PROGRAMBENCH_EXPERIMENT_DESCRIPTION"]
+if os.environ["PROGRAMBENCH_EXPERIMENT_TAGS"]:
+    experiment["tags"] = [tag.strip() for tag in os.environ["PROGRAMBENCH_EXPERIMENT_TAGS"].split(",") if tag.strip()]
+factors = experiment.get("factors") if isinstance(experiment.get("factors"), dict) else {}
+if os.environ["PROGRAMBENCH_EXPERIMENT_FACTORS"]:
+    try:
+        factors.update(json.loads(os.environ["PROGRAMBENCH_EXPERIMENT_FACTORS"]))
+    except json.JSONDecodeError:
+        factors["custom"] = os.environ["PROGRAMBENCH_EXPERIMENT_FACTORS"]
+factors.setdefault("model", os.environ["MODEL"])
+factors.setdefault("reasoning_effort", os.environ["REASONING_EFFORT"])
+factors.setdefault("harness_mode", data["harness_mode"])
+factors.setdefault("validator_access", data["validator_access"])
+if os.environ["PROGRAMBENCH_SYSTEM_PROMPT_LABEL"]:
+    factors.setdefault("system_prompt", os.environ["PROGRAMBENCH_SYSTEM_PROMPT_LABEL"])
+experiment["factors"] = {str(k): str(v) for k, v in sorted(factors.items())}
+if experiment.get("name") or experiment.get("description") or experiment.get("tags") or experiment.get("factors"):
+    data["experiment"] = experiment
 data["solver_network"] = os.environ["SOLVER_EGRESS_MODE"]
 data["solver_egress_guard"] = os.environ["SOLVER_EGRESS_GUARD"]
 data["solver_egress_guard_active"] = (
@@ -173,6 +200,13 @@ Goal:
 Before finishing, run ./compile.sh and compare ./executable against
 ./query-reference.sh on representative cases.
 EOF
+
+if [[ -n "${PROGRAMBENCH_SYSTEM_PROMPT_APPEND:-}" ]]; then
+  {
+    printf '\nExperiment-specific solver instructions:\n'
+    printf '%s\n' "$PROGRAMBENCH_SYSTEM_PROMPT_APPEND"
+  } >> "$prompt"
+fi
 
 started_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 started_s="$(python3 - <<'PY'

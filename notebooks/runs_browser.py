@@ -138,8 +138,10 @@ def _(html, mo, runs):
     rows = []
     for run in runs:
         _accounting = run.get("accounting") or {}
+        _experiment = run.get("experiment") or {}
         rows.append(
             "<tr>"
+            f"<td>{html.escape(str(_experiment.get('name') or run.get('label') or run['run_id']))}</td>"
             f"<td>{html.escape(run['run_id'])}</td>"
             f"<td>{html.escape(str(run.get('model') or ''))}</td>"
             f"<td>{html.escape(str(run.get('reasoning_effort') or ''))}</td>"
@@ -156,11 +158,11 @@ def _(html, mo, runs):
     mo.Html(
         "<table class='pb-table'>"
         "<colgroup>"
-        "<col style='width: 25%'><col style='width: 13%'><col style='width: 9%'>"
-        "<col style='width: 7%'><col style='width: 7%'><col style='width: 12%'>"
-        "<col style='width: 16%'><col style='width: 11%'>"
+        "<col style='width: 18%'><col style='width: 20%'><col style='width: 12%'><col style='width: 8%'>"
+        "<col style='width: 6%'><col style='width: 7%'><col style='width: 10%'>"
+        "<col style='width: 13%'><col style='width: 6%'>"
         "</colgroup>"
-        "<thead><tr><th>Run</th><th>Model</th><th>Effort</th><th>Eval</th>"
+        "<thead><tr><th>Experiment</th><th>Run</th><th>Model</th><th>Effort</th><th>Eval</th>"
         "<th>Score</th><th>Passed</th><th>Accounting</th><th>Created</th></tr></thead>"
         f"<tbody>{''.join(rows)}</tbody></table>"
         if rows
@@ -191,6 +193,11 @@ def _(duration_cell, html, mo, score_cell, selected_run, tokens_cell):
         run_detail = mo.md("No run selected.")
     else:
         _accounting = selected_run.get("accounting") or {}
+        _experiment = selected_run.get("experiment") or {}
+        _factor_text = ", ".join(
+            f"{key}: {value}" for key, value in (_experiment.get("factors") or {}).items()
+        )
+        _tag_text = ", ".join(_experiment.get("tags") or [])
         _usage = _accounting.get("tokens") or selected_run.get("event_summary", {}).get("usage", {})
         _usage_text = ", ".join(f"{k}: {v:,}" for k, v in _usage.items()) or "no usage event"
         links = []
@@ -206,6 +213,9 @@ def _(duration_cell, html, mo, score_cell, selected_run, tokens_cell):
             f"""
             <section class="pb-detail">
             <h2>{html.escape(selected_run['run_id'])}</h2>
+            <p><b>Experiment:</b> {html.escape(str(_experiment.get('name') or selected_run.get('label') or selected_run['run_id']))}</p>
+            <p>{html.escape(str(_experiment.get('description') or ''))}</p>
+            <p class="pb-subtle">{html.escape(_tag_text)}{'<br>' if _tag_text and _factor_text else ''}{html.escape(_factor_text)}</p>
             <p class="pb-meta">
             <span><b>Model:</b> {html.escape(str(selected_run.get('model') or ''))}</span>
             <span><b>Reasoning:</b> {html.escape(str(selected_run.get('reasoning_effort') or ''))}</span>
